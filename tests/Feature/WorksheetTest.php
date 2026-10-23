@@ -70,8 +70,8 @@ class WorksheetTest extends TestCase
         // Test Show
         $showResponse = $this->actingAs($user)->get(route('worksheets.show', $worksheet));
         $showResponse->assertStatus(200);
-        $showResponse->assertSee('25 Koli');
-        $showResponse->assertSee('350.50 kg');
+        $showResponse->assertSee('25/25 koli', false);
+        $showResponse->assertSee('350.5/350.5 kg', false);
 
         // Test Update
         $updatePayload = $payload;

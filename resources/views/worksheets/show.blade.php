@@ -36,7 +36,7 @@
                     @endif
                 </div>
                 <p class="text-xs text-muted-foreground mt-0.5">
-                    Master SMU: <span class="font-mono font-bold text-foreground">{{ $worksheet->nomor_smu }}</span> • Tanggal: {{ $worksheet->tanggal->format('d F Y') }}
+                    Master SMU: <span class="font-mono font-bold text-foreground">{{ $worksheet->nomor_smu }}</span> • Tanggal: {{ $worksheet->tanggal->format('d F Y') }} • Fisik: <span class="font-mono font-semibold text-foreground">{{ $worksheet->display_koli_smu }}/{{ $worksheet->total_koli }} koli</span>, <span class="font-mono font-semibold text-foreground">{{ (float) $worksheet->display_berat_smu }}/{{ (float) $worksheet->total_berat_kg }} kg</span>
                 </p>
             </div>
         </div>
@@ -94,18 +94,18 @@
             <div class="text-xl font-bold tracking-tight text-foreground mt-0.5">{{ count($worksheet->items) }} Pelanggan</div>
         </div>
         <div class="uk-card uk-card-default p-3.5 border border-border">
-            <span class="text-[11px] text-muted-foreground uppercase font-medium block">Total Koli SMU</span>
-            <div class="text-xl font-bold tracking-tight text-foreground font-mono mt-0.5">{{ $worksheet->display_koli_smu }} Koli</div>
-            @if($worksheet->koli_smu && $worksheet->koli_smu != $worksheet->total_koli)
-                <span class="text-[10px] text-muted-foreground block">Rincian: {{ $worksheet->total_koli }} Koli</span>
-            @endif
+            <span class="text-[11px] text-muted-foreground uppercase font-medium block">Koli (SMU / Detail)</span>
+            <div class="text-xl font-bold tracking-tight text-foreground font-mono mt-0.5 {{ $worksheet->display_koli_smu != $worksheet->total_koli ? 'text-amber-600' : '' }}">
+                {{ $worksheet->display_koli_smu }}/{{ $worksheet->total_koli }} koli
+            </div>
+            <span class="text-[10px] text-muted-foreground block mt-0.5">SMU: {{ $worksheet->display_koli_smu }} • Rincian: {{ $worksheet->total_koli }} koli</span>
         </div>
         <div class="uk-card uk-card-default p-3.5 border border-border">
-            <span class="text-[11px] text-muted-foreground uppercase font-medium block">Total Kilo SMU</span>
-            <div class="text-xl font-bold tracking-tight text-foreground font-mono mt-0.5">{{ number_format($worksheet->display_berat_smu, 2) }} kg</div>
-            @if($worksheet->berat_smu && $worksheet->berat_smu != $worksheet->total_berat_kg)
-                <span class="text-[10px] text-muted-foreground block">Rincian: {{ number_format($worksheet->total_berat_kg, 2) }} kg</span>
-            @endif
+            <span class="text-[11px] text-muted-foreground uppercase font-medium block">Berat (SMU / Detail)</span>
+            <div class="text-xl font-bold tracking-tight text-foreground font-mono mt-0.5 {{ abs($worksheet->display_berat_smu - $worksheet->total_berat_kg) > 0.01 ? 'text-amber-600' : '' }}">
+                {{ (float) $worksheet->display_berat_smu }}/{{ (float) $worksheet->total_berat_kg }} kg
+            </div>
+            <span class="text-[10px] text-muted-foreground block mt-0.5">SMU: {{ (float) $worksheet->display_berat_smu }} kg • Rincian: {{ (float) $worksheet->total_berat_kg }} kg</span>
         </div>
         <div class="uk-card uk-card-default p-3.5 border border-border">
             <span class="text-[11px] text-muted-foreground uppercase font-medium block">Total Nilai SMU</span>
@@ -197,6 +197,16 @@
                         </tr>
                     @endforeach
                 </tbody>
+                <tfoot>
+                    <tr class="bg-muted/40 font-semibold border-t border-border text-xs">
+                        <td colspan="2" class="py-3 px-4 text-foreground font-bold">Total Rincian Fisik Pelanggan:</td>
+                        <td class="py-3 px-4 text-center font-mono font-bold text-foreground">{{ $worksheet->total_koli }} koli</td>
+                        <td class="py-3 px-4 text-right font-mono font-bold text-foreground">{{ number_format($worksheet->total_berat_kg, 2) }} kg</td>
+                        <td></td>
+                        <td class="py-3 px-4 text-right font-mono font-bold text-primary">Rp {{ number_format($worksheet->total_biaya, 0, ',', '.') }}</td>
+                        <td colspan="3"></td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     </div>
