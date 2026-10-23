@@ -6,22 +6,14 @@
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
-            <a href="{{ route('payments.index') }}" class="uk-btn uk-btn-default uk-btn-sm text-xs flex items-center gap-1.5 shadow-xs">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                </svg>
-                <span>Kembali</span>
-            </a>
-            <div>
-                <div class="flex items-center gap-2">
-                    <h1 class="text-lg sm:text-xl font-bold tracking-tight text-foreground font-mono">{{ $payment->nomor_pembayaran }}</h1>
-                    <span class="uk-label uk-label-success text-[10px]">BERHASIL DIALOKASIKAN</span>
-                </div>
-                <p class="text-xs text-muted-foreground mt-0.5">
-                    Tanggal Pembayaran: {{ $payment->tanggal->format('d F Y') }} • Diterima oleh: {{ $payment->user->name ?? 'Kasir' }}
-                </p>
+        <div>
+            <div class="flex items-center gap-2">
+                <h1 class="text-lg sm:text-xl font-bold tracking-tight text-foreground font-mono">{{ $payment->nomor_pembayaran }}</h1>
+                <span class="uk-label uk-label-success text-[10px]">BERHASIL DIALOKASIKAN</span>
             </div>
+            <p class="text-xs text-muted-foreground mt-0.5">
+                Tanggal Pembayaran: {{ $payment->tanggal->format('d F Y') }} • Diterima oleh: {{ $payment->user->name ?? 'Kasir' }}
+            </p>
         </div>
 
         <div class="flex items-center gap-2 flex-wrap">
@@ -42,6 +34,13 @@
                     Batalkan Pembayaran
                 </button>
             </form>
+
+            <a href="{{ route('payments.index') }}" class="uk-btn uk-btn-default uk-btn-sm text-xs flex items-center gap-1.5 shadow-xs">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                <span>Kembali</span>
+            </a>
         </div>
     </div>
 
