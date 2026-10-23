@@ -6,39 +6,31 @@
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
-            <a href="{{ route('worksheets.index') }}" class="uk-btn uk-btn-default uk-btn-sm text-xs flex items-center gap-1.5 shadow-xs">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                </svg>
-                <span>Kembali</span>
-            </a>
-            <div>
-                <div class="flex items-center gap-2 flex-wrap">
-                    <h1 class="text-lg sm:text-xl font-bold tracking-tight text-foreground">{{ $worksheet->nomor_lembar_kerja }}</h1>
-                    
-                    @if(($worksheet->tipe ?? 'pecahan') === 'pernama')
-                        <span class="badge-tipe-pernama">
-                            PERNAMA (1 CUSTOMER)
-                        </span>
-                    @else
-                        <span class="badge-tipe-pecahan">
-                            PECAHAN (KONSOLIDASI)
-                        </span>
-                    @endif
+        <div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <h1 class="text-lg sm:text-xl font-bold tracking-tight text-foreground">{{ $worksheet->nomor_lembar_kerja }}</h1>
+                
+                @if(($worksheet->tipe ?? 'pecahan') === 'pernama')
+                    <span class="badge-tipe-pernama">
+                        PERNAMA (1 CUSTOMER)
+                    </span>
+                @else
+                    <span class="badge-tipe-pecahan">
+                        PECAHAN (KONSOLIDASI)
+                    </span>
+                @endif
 
-                    @if($worksheet->status === 'draft')
-                        <span class="uk-label text-xs">DRAFT</span>
-                    @elseif($worksheet->status === 'selesai')
-                        <span class="uk-label uk-label-warning text-xs">SELESAI</span>
-                    @else
-                        <span class="uk-label uk-label-success text-xs">SEMUA DINOTAKAN</span>
-                    @endif
-                </div>
-                <p class="text-xs text-muted-foreground mt-0.5">
-                    Master SMU: <span class="font-mono font-bold text-foreground">{{ $worksheet->nomor_smu }}</span> • Tanggal: {{ $worksheet->tanggal->format('d F Y') }} • Fisik: <span class="font-mono font-semibold text-foreground">{{ $worksheet->display_koli_smu }}/{{ $worksheet->total_koli }} koli</span>, <span class="font-mono font-semibold text-foreground">{{ (float) $worksheet->display_berat_smu }}/{{ (float) $worksheet->total_berat_kg }} kg</span>
-                </p>
+                @if($worksheet->status === 'draft')
+                    <span class="uk-label text-xs">DRAFT</span>
+                @elseif($worksheet->status === 'selesai')
+                    <span class="uk-label uk-label-warning text-xs">SELESAI</span>
+                @else
+                    <span class="uk-label uk-label-success text-xs">SEMUA DINOTAKAN</span>
+                @endif
             </div>
+            <p class="text-xs text-muted-foreground mt-0.5">
+                Master SMU: <span class="font-mono font-bold text-foreground">{{ $worksheet->nomor_smu }}</span> • Tanggal: {{ $worksheet->tanggal->format('d F Y') }} • Fisik: <span class="font-mono font-semibold text-foreground">{{ $worksheet->display_koli_smu }}/{{ $worksheet->total_koli }} koli</span>, <span class="font-mono font-semibold text-foreground">{{ (float) $worksheet->display_berat_smu }}/{{ (float) $worksheet->total_berat_kg }} kg</span>
+            </p>
         </div>
 
         <div class="flex items-center gap-2 flex-wrap">
@@ -84,6 +76,13 @@
                     </form>
                 @endif
             @endif
+
+            <a href="{{ route('worksheets.index') }}" class="uk-btn uk-btn-default uk-btn-sm text-xs flex items-center gap-1.5 shadow-xs">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                <span>Kembali</span>
+            </a>
         </div>
     </div>
 
