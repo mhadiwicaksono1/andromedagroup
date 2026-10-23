@@ -1,0 +1,386 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-heading: 'Outfit', system-ui, -apple-system, sans-serif;
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* App Brand Logo Theme Switching */
+.app-logo-transparent {
+    display: inline-block !important;
+}
+.app-logo-white {
+    display: none !important;
+}
+
+html.dark .app-logo-transparent {
+    display: none !important;
+}
+html.dark .app-logo-white {
+    display: inline-block !important;
+}
+
+/* Custom Utilities & Animations */
+:root {
+    --card-bg-dark: rgba(15, 23, 42, 0.75);
+    --card-border-dark: rgba(255, 255, 255, 0.08);
+}
+
+html {
+    font-size: 13.5px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    font-size: 0.925rem;
+}
+
+/* Universal Button Styling (Franken UI & Tailwind) */
+.uk-btn,
+.uk-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    white-space: nowrap;
+    border-radius: 0.375rem;
+    font-size: 0.775rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    padding: 0.375rem 0.75rem;
+    transition: all 0.15s ease-in-out;
+    cursor: pointer;
+    text-decoration: none !important;
+    user-select: none;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.uk-btn:disabled,
+.uk-button:disabled,
+.uk-btn[disabled],
+.uk-button[disabled] {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+/* Primary Button */
+.uk-btn-primary,
+.uk-button-primary {
+    background-color: hsl(var(--primary, 240 5.9% 10%)) !important;
+    color: hsl(var(--primary-foreground, 0 0% 98%)) !important;
+    border: 1px solid transparent !important;
+    font-weight: 600;
+}
+.uk-btn-primary:hover,
+.uk-button-primary:hover {
+    opacity: 0.92;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px -1px rgba(0, 0, 0, 0.2);
+}
+.uk-btn-primary:active,
+.uk-button-primary:active {
+    transform: translateY(0);
+}
+
+/* Secondary Button */
+.uk-btn-secondary,
+.uk-button-secondary {
+    background-color: hsl(var(--secondary, 240 3.7% 15.9%)) !important;
+    color: hsl(var(--secondary-foreground, 0 0% 98%)) !important;
+    border: 1px solid hsl(var(--border, 240 3.7% 20%)) !important;
+    font-weight: 500;
+}
+.uk-btn-secondary:hover,
+.uk-button-secondary:hover {
+    background-color: hsl(var(--muted, 240 3.7% 20%)) !important;
+    color: hsl(var(--foreground, 0 0% 98%)) !important;
+    transform: translateY(-1px);
+}
+
+/* Default / Outline Button */
+.uk-btn-default,
+.uk-button-default {
+    background-color: transparent !important;
+    color: hsl(var(--foreground, 0 0% 98%)) !important;
+    border: 1px solid hsl(var(--border, 240 3.7% 20%)) !important;
+}
+.uk-btn-default:hover,
+.uk-button-default:hover {
+    background-color: hsl(var(--muted, 240 3.7% 20%)) !important;
+    border-color: hsl(var(--border, 240 3.7% 25%)) !important;
+    transform: translateY(-1px);
+}
+
+/* Destructive Button */
+.uk-btn-destructive,
+.uk-button-destructive,
+.uk-btn-danger,
+.uk-button-danger {
+    background-color: #ef4444 !important;
+    color: #ffffff !important;
+    border: 1px solid #dc2626 !important;
+    font-weight: 600;
+}
+.uk-btn-destructive:hover,
+.uk-button-destructive:hover,
+.uk-btn-danger:hover,
+.uk-button-danger:hover {
+    background-color: #dc2626 !important;
+    transform: translateY(-1px);
+}
+
+/* Ghost Button */
+.uk-btn-ghost,
+.uk-button-ghost {
+    background-color: transparent !important;
+    color: hsl(var(--muted-foreground, 240 5% 64.9%)) !important;
+    border: 1px solid transparent !important;
+    box-shadow: none !important;
+}
+.uk-btn-ghost:hover,
+.uk-button-ghost:hover {
+    background-color: hsl(var(--muted, 240 3.7% 20%)) !important;
+    color: hsl(var(--foreground, 0 0% 98%)) !important;
+}
+
+/* Sizing Modifiers */
+.uk-btn-sm,
+.uk-button-sm {
+    height: 1.85rem !important;
+    padding: 0.2rem 0.625rem !important;
+    font-size: 0.75rem !important;
+}
+.uk-btn-xs,
+.uk-button-xs {
+    height: 1.625rem !important;
+    padding: 0.15rem 0.45rem !important;
+    font-size: 0.7rem !important;
+}
+
+/* Specific Light Mode Colors */
+html.light .uk-btn-primary,
+html.light .uk-button-primary {
+    background-color: #0f172a !important;
+    color: #ffffff !important;
+    border-color: #0f172a !important;
+}
+html.light .uk-btn-primary:hover,
+html.light .uk-button-primary:hover {
+    background-color: #1e293b !important;
+}
+html.light .uk-btn-secondary,
+html.light .uk-button-secondary {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+}
+html.light .uk-btn-secondary:hover,
+html.light .uk-button-secondary:hover {
+    background-color: #e2e8f0 !important;
+}
+html.light .uk-btn-default,
+html.light .uk-button-default {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+}
+html.light .uk-btn-default:hover,
+html.light .uk-button-default:hover {
+    background-color: #f8fafc !important;
+    border-color: #94a3b8 !important;
+}
+html.light .uk-btn-ghost,
+html.light .uk-button-ghost {
+    background-color: transparent !important;
+    color: #475569 !important;
+    border-color: transparent !important;
+}
+html.light .uk-btn-ghost:hover,
+html.light .uk-button-ghost:hover {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+}
+
+/* Specific Dark Mode Colors */
+html.dark .uk-btn-primary,
+html.dark .uk-button-primary {
+    background-color: #f8fafc !important;
+    color: #09090b !important;
+    border-color: #f8fafc !important;
+}
+html.dark .uk-btn-primary:hover,
+html.dark .uk-button-primary:hover {
+    background-color: #e2e8f0 !important;
+}
+html.dark .uk-btn-secondary,
+html.dark .uk-button-secondary {
+    background-color: #27272a !important;
+    color: #f4f4f5 !important;
+    border-color: #3f3f46 !important;
+}
+html.dark .uk-btn-secondary:hover,
+html.dark .uk-button-secondary:hover {
+    background-color: #3f3f46 !important;
+}
+html.dark .uk-btn-default,
+html.dark .uk-button-default {
+    background-color: #18181b !important;
+    color: #f4f4f5 !important;
+    border-color: #27272a !important;
+}
+html.dark .uk-btn-default:hover,
+html.dark .uk-button-default:hover {
+    background-color: #27272a !important;
+    border-color: #3f3f46 !important;
+}
+html.dark .uk-btn-ghost,
+html.dark .uk-button-ghost {
+    background-color: transparent !important;
+    color: #a1a1aa !important;
+    border-color: transparent !important;
+}
+html.dark .uk-btn-ghost:hover,
+html.dark .uk-button-ghost:hover {
+    background-color: #27272a !important;
+    color: #fafafa !important;
+}
+
+html.light {
+    color-scheme: light;
+}
+
+html.light body {
+    background-color: #f8fafc;
+    color: #0f172a;
+}
+
+html.light header {
+    background-color: rgba(255, 255, 255, 0.85);
+    border-color: #e2e8f0;
+}
+
+html.light .bg-slate-900,
+html.light .bg-slate-900\/80,
+html.light .bg-slate-900\/50,
+html.light .bg-slate-900\/40 {
+    background-color: #ffffff;
+    border-color: #e2e8f0;
+    color: #1e293b;
+}
+
+html.light .bg-slate-800,
+html.light .bg-slate-800\/60,
+html.light .bg-slate-800\/80 {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #334155;
+}
+
+html.light .text-slate-400 {
+    color: #64748b;
+}
+
+html.light .text-slate-300 {
+    color: #475569;
+}
+
+html.light .text-slate-200 {
+    color: #1e293b;
+}
+
+html.light .border-slate-800,
+html.light .border-slate-700,
+html.light .border-slate-800\/80,
+html.light .border-slate-700\/60 {
+    border-color: #e2e8f0;
+}
+
+/* Drag and Drop Visual Feedback */
+.task-card {
+    transition: transform 0.18s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.18s ease, opacity 0.18s ease;
+    cursor: grab;
+    user-select: none;
+}
+
+.task-card:active {
+    cursor: grabbing;
+}
+
+.task-card.dragging {
+    opacity: 0.45;
+    transform: scale(0.98) rotate(1.5deg);
+    box-shadow: 0 12px 28px -4px rgba(99, 102, 241, 0.25);
+    border-color: rgba(99, 102, 241, 0.6);
+}
+
+.kanban-dropzone.drag-over {
+    background-color: rgba(99, 102, 241, 0.08) !important;
+    border-color: rgba(99, 102, 241, 0.5) !important;
+    border-style: dashed !important;
+}
+
+.drag-placeholder {
+    height: 90px;
+    border: 2px dashed rgba(99, 102, 241, 0.4);
+    border-radius: 0.85rem;
+    background-color: rgba(99, 102, 241, 0.06);
+    margin-bottom: 0.75rem;
+    transition: all 0.2s ease;
+}
+
+/* Priority Pulse Animations */
+@keyframes urgent-pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(1.25);
+    }
+}
+
+.pulse-urgent {
+    animation: urgent-pulse 2s infinite ease-in-out;
+}
+
+/* Glassmorphism Cards */
+.glass-panel {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+html.light .glass-panel {
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.2);
+    border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.4);
+}

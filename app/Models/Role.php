@@ -1,0 +1,61 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Role extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'name',
+        'slug',
+        'description',
+        'is_system',
+    ];
+
+    protected $casts = [
+        'is_system' => 'boolean',
+    ];
+
+    /**
+     * Get the users that belong to this role.
+     */
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class);
+    }
+
+    /**
+     * Get all permissions assigned to this role.
+     */
+    public function permissions(): BelongsToMany
+    {
+        return $this->belongsToMany(Permission::class, 'role_permission')->withTimestamps();
+    }
+
+    /**
+     * Check if role has a specific permission slug.
+     */
+    public function hasPermission(string $permissionSlug): bool
+    {
+        // System admin has all permissions
+        if ($this->slug === 'admin') {
+            return true;
+        }
+
+        return $this->permissions->contains('slug', $permissionSlug);
+    }
+
+    /**
+     * Sync permissions by array of IDs.
+     */
+    public function syncPermissions(array $permissionIds): void
+    {
+        $this->permissions()->sync($permissionIds);
+    }
+}
