@@ -82,7 +82,7 @@
                         <div class="uk-form-controls">
                             <input class="uk-input @error('email') border-destructive @enderror" 
                                    type="email" name="email" id="email" required 
-                                   value="{{ old('email', 'admin@andromeda.com') }}" 
+                                   value="{{ old('email') }}" 
                                    placeholder="nama@andromeda.com">
                         </div>
                         @error('email')
@@ -91,12 +91,9 @@
                     </div>
 
                     <div>
-                        <div class="flex items-center justify-between mb-1">
-                            <label class="uk-form-label text-xs font-medium text-foreground" for="password">Kata Sandi</label>
-                            <span class="text-[10px] text-muted-foreground font-mono">default: password</span>
-                        </div>
+                        <label class="uk-form-label text-xs font-medium text-foreground mb-1 block" for="password">Kata Sandi</label>
                         <div class="uk-form-controls">
-                            <input class="uk-input" type="password" name="password" id="password" required value="password">
+                            <input class="uk-input" type="password" name="password" id="password" required placeholder="••••••••">
                         </div>
                     </div>
 
