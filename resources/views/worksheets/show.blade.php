@@ -95,11 +95,17 @@
         </div>
         <div class="uk-card uk-card-default p-3.5 border border-border">
             <span class="text-[11px] text-muted-foreground uppercase font-medium block">Total Koli SMU</span>
-            <div class="text-xl font-bold tracking-tight text-foreground font-mono mt-0.5">{{ $worksheet->total_koli }} Koli</div>
+            <div class="text-xl font-bold tracking-tight text-foreground font-mono mt-0.5">{{ $worksheet->display_koli_smu }} Koli</div>
+            @if($worksheet->koli_smu && $worksheet->koli_smu != $worksheet->total_koli)
+                <span class="text-[10px] text-muted-foreground block">Rincian: {{ $worksheet->total_koli }} Koli</span>
+            @endif
         </div>
         <div class="uk-card uk-card-default p-3.5 border border-border">
-            <span class="text-[11px] text-muted-foreground uppercase font-medium block">Total Berat Riil</span>
-            <div class="text-xl font-bold tracking-tight text-foreground font-mono mt-0.5">{{ number_format($worksheet->total_berat_kg, 2) }} kg</div>
+            <span class="text-[11px] text-muted-foreground uppercase font-medium block">Total Kilo SMU</span>
+            <div class="text-xl font-bold tracking-tight text-foreground font-mono mt-0.5">{{ number_format($worksheet->display_berat_smu, 2) }} kg</div>
+            @if($worksheet->berat_smu && $worksheet->berat_smu != $worksheet->total_berat_kg)
+                <span class="text-[10px] text-muted-foreground block">Rincian: {{ number_format($worksheet->total_berat_kg, 2) }} kg</span>
+            @endif
         </div>
         <div class="uk-card uk-card-default p-3.5 border border-border">
             <span class="text-[11px] text-muted-foreground uppercase font-medium block">Total Nilai SMU</span>

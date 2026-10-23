@@ -76,7 +76,31 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                        <label class="uk-form-label text-xs font-medium text-foreground mb-1 flex items-center justify-between">
+                            <span>Koli SMU *</span>
+                            <span class="text-[10px] text-muted-foreground font-normal">Fisik Master</span>
+                        </label>
+                        <input type="number" name="koli_smu" id="header_koli_smu" value="{{ old('koli_smu') }}" min="1" placeholder="Contoh: 10"
+                               class="uk-input text-xs font-mono font-semibold @error('koli_smu') border-destructive @enderror">
+                        @error('koli_smu')
+                            <p class="text-xs text-destructive mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label class="uk-form-label text-xs font-medium text-foreground mb-1 flex items-center justify-between">
+                            <span>Kilo SMU (kg) *</span>
+                            <span class="text-[10px] text-muted-foreground font-normal">Berat Master</span>
+                        </label>
+                        <input type="number" step="0.01" name="berat_smu" id="header_berat_smu" value="{{ old('berat_smu') }}" min="0.01" placeholder="Contoh: 150.00"
+                               class="uk-input text-xs font-mono font-semibold @error('berat_smu') border-destructive @enderror">
+                        @error('berat_smu')
+                            <p class="text-xs text-destructive mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     <div>
                         <label class="uk-form-label text-xs font-medium text-foreground mb-1 block">Status Awal *</label>
                         <select name="status" required class="uk-select text-xs">
@@ -85,11 +109,21 @@
                         </select>
                     </div>
 
-                    <div class="sm:col-span-2">
-                        <label class="uk-form-label text-xs font-medium text-foreground mb-1 block">Keterangan / Rute Penerbangan</label>
-                        <input type="text" name="keterangan" value="{{ old('keterangan') }}" placeholder="Contoh: Garuda GA-312 CGK - SUB (Kargo Konsolidasi)"
-                               class="uk-input text-xs">
+                    <div>
+                        <label class="uk-form-label text-xs font-medium text-foreground mb-1 block">Origin (Asal Bandara) *</label>
+                        <select name="origin" class="uk-select text-xs font-semibold">
+                            <option value="lop" {{ old('origin', 'lop') === 'lop' ? 'selected' : '' }}>LOP — Lombok</option>
+                            <option value="sub" {{ old('origin') === 'sub' ? 'selected' : '' }}>SUB — Surabaya</option>
+                            <option value="dps" {{ old('origin') === 'dps' ? 'selected' : '' }}>DPS — Denpasar</option>
+                            <option value="cgk" {{ old('origin') === 'cgk' ? 'selected' : '' }}>CGK — Jakarta</option>
+                        </select>
                     </div>
+                </div>
+
+                <div>
+                    <label class="uk-form-label text-xs font-medium text-foreground mb-1 block">Keterangan / Rute Penerbangan</label>
+                    <input type="text" name="keterangan" value="{{ old('keterangan') }}" placeholder="Contoh: Garuda GA-312 CGK - SUB (Kargo Konsolidasi)"
+                           class="uk-input text-xs">
                 </div>
             </div>
         </div>
@@ -290,6 +324,7 @@
         rows.forEach(row => {
             const koli = parseInt(row.querySelector('.item-koli')?.value) || 0;
             const berat = parseFloat(row.querySelector('.item-berat')?.value) || 0;
+            const tarif = parseFloat(row.querySelector('.item-tarif')?.value) || 0;
             // Pembulatan ke atas ke kelipatan seribu terdekat sesuai standar nota kargo
             const raw = berat * tarif;
             const rowTotal = raw > 0 ? Math.ceil(raw / 1000) * 1000 : 0;
@@ -302,6 +337,35 @@
             totalBiaya += rowTotal;
         });
 
+        const headerKoli = document.getElementById('header_koli_smu');
+        const headerBerat = document.getElementById('header_berat_smu');
+
+        // Jika mode pernama, sync dua arah
+        if (currentTipe === 'pernama') {
+            const firstRowKoli = document.querySelector('.item-row .item-koli');
+            const firstRowBerat = document.querySelector('.item-row .item-berat');
+            if (headerKoli && firstRowKoli && !headerKoli.value && firstRowKoli.value) {
+                headerKoli.value = firstRowKoli.value;
+            }
+            if (headerBerat && firstRowBerat && !headerBerat.value && firstRowBerat.value) {
+                headerBerat.value = firstRowBerat.value;
+            }
+        } else {
+            // Jika mode pecahan dan header belum diisi secara manual, isi otomatis dengan jumlah total
+            if (headerKoli && (!headerKoli.value || headerKoli.dataset.autoFilled === 'true')) {
+                if (totalKoli > 0) {
+                    headerKoli.value = totalKoli;
+                    headerKoli.dataset.autoFilled = 'true';
+                }
+            }
+            if (headerBerat && (!headerBerat.value || headerBerat.dataset.autoFilled === 'true')) {
+                if (totalBerat > 0) {
+                    headerBerat.value = totalBerat.toFixed(2);
+                    headerBerat.dataset.autoFilled = 'true';
+                }
+            }
+        }
+
         const custCountEl = document.getElementById('grand-cust-count');
         if (custCountEl) custCountEl.textContent = rows.length + ' Customer';
         const koliEl = document.getElementById('grand-koli');
@@ -313,8 +377,20 @@
     }
 
     function bindRowEvents(row) {
-        row.querySelector('.item-koli')?.addEventListener('input', recalculate);
-        row.querySelector('.item-berat')?.addEventListener('input', recalculate);
+        row.querySelector('.item-koli')?.addEventListener('input', function() {
+            if (currentTipe === 'pernama') {
+                const headerKoli = document.getElementById('header_koli_smu');
+                if (headerKoli) headerKoli.value = this.value;
+            }
+            recalculate();
+        });
+        row.querySelector('.item-berat')?.addEventListener('input', function() {
+            if (currentTipe === 'pernama') {
+                const headerBerat = document.getElementById('header_berat_smu');
+                if (headerBerat) headerBerat.value = this.value;
+            }
+            recalculate();
+        });
         row.querySelector('.item-tarif')?.addEventListener('input', recalculate);
 
         row.querySelector('.btn-remove-row')?.addEventListener('click', function () {
@@ -401,6 +477,31 @@
                 recalculate();
             });
         }
+
+        const headerKoli = document.getElementById('header_koli_smu');
+        const headerBerat = document.getElementById('header_berat_smu');
+
+        headerKoli?.addEventListener('input', function() {
+            this.dataset.autoFilled = 'false';
+            if (currentTipe === 'pernama') {
+                const firstRowKoli = document.querySelector('.item-row .item-koli');
+                if (firstRowKoli) {
+                    firstRowKoli.value = this.value;
+                    recalculate();
+                }
+            }
+        });
+
+        headerBerat?.addEventListener('input', function() {
+            this.dataset.autoFilled = 'false';
+            if (currentTipe === 'pernama') {
+                const firstRowBerat = document.querySelector('.item-row .item-berat');
+                if (firstRowBerat) {
+                    firstRowBerat.value = this.value;
+                    recalculate();
+                }
+            }
+        });
 
         // Initialize Select2 on existing item-customer
         $(document).ready(function() {

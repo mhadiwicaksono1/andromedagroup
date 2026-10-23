@@ -13,6 +13,8 @@ class Worksheet extends Model
         'nomor_lembar_kerja',
         'tanggal',
         'nomor_smu',
+        'koli_smu',
+        'berat_smu',
         'origin',
         'tipe',
         'total_koli',
@@ -25,6 +27,8 @@ class Worksheet extends Model
 
     protected $casts = [
         'tanggal' => 'date',
+        'koli_smu' => 'integer',
+        'berat_smu' => 'decimal:2',
         'total_koli' => 'integer',
         'total_berat_kg' => 'decimal:2',
         'total_biaya' => 'decimal:2',
@@ -45,11 +49,28 @@ class Worksheet extends Model
         return $this->hasMany(IasPayment::class, 'nomor_smu', 'nomor_smu');
     }
 
+    public function getDisplayKoliSmuAttribute(): int
+    {
+        return $this->koli_smu ?: (int) $this->total_koli;
+    }
+
+    public function getDisplayBeratSmuAttribute(): float
+    {
+        return (float) ($this->berat_smu ?: $this->total_berat_kg);
+    }
+
     public function recalculateTotals(): void
     {
         $this->total_koli = (int) $this->items()->sum('jumlah_koli');
         $this->total_berat_kg = (float) $this->items()->sum('berat_kg');
         $this->total_biaya = (float) $this->items()->sum('total_biaya');
+
+        if (!$this->koli_smu) {
+            $this->koli_smu = $this->total_koli;
+        }
+        if (!$this->berat_smu) {
+            $this->berat_smu = $this->total_berat_kg;
+        }
 
         // Check if all items are dinotakan
         $totalItems = $this->items()->count();
