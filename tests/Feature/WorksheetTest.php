@@ -86,5 +86,12 @@ class WorksheetTest extends TestCase
         $worksheet->refresh();
         $this->assertEquals(30, $worksheet->koli_smu);
         $this->assertEquals(400.00, $worksheet->berat_smu);
+
+        // Test Index
+        $indexResponse = $this->actingAs($user)->get(route('worksheets.index'));
+        $indexResponse->assertStatus(200);
+        $indexResponse->assertSee('30/30 koli', false);
+        $indexResponse->assertSee('400/400 kg', false);
     }
 }
+

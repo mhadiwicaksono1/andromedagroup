@@ -69,8 +69,8 @@
                         <th class="py-3 px-4 font-medium">Tanggal</th>
                         <th class="py-3 px-4 font-medium">Nomor SMU</th>
                         <th class="py-3 px-4 font-medium">Daftar Customer &amp; Marking</th>
-                        <th class="py-3 px-4 font-medium text-center">Total Koli</th>
-                        <th class="py-3 px-4 font-medium text-right">Total Berat</th>
+                        <th class="py-3 px-4 font-medium text-center">Koli (SMU/Detail)</th>
+                        <th class="py-3 px-4 font-medium text-right">Berat (SMU/Detail)</th>
                         <th class="py-3 px-4 font-medium text-right">Total Biaya SMU</th>
                         <th class="py-3 px-4 font-medium text-center">Status</th>
                         <th class="py-3 px-4 font-medium text-right">Aksi</th>
@@ -115,11 +115,13 @@
                                     @endforeach
                                 </div>
                             </td>
-                            <td class="py-3.5 px-4 text-center font-mono text-muted-foreground whitespace-nowrap">
-                                {{ $ws->total_koli }}
+                            <td class="py-3.5 px-4 text-center font-mono whitespace-nowrap {{ $ws->display_koli_smu != $ws->total_koli ? 'text-amber-600 font-semibold' : 'text-muted-foreground' }}"
+                                title="SMU: {{ $ws->display_koli_smu }} koli • Rincian: {{ $ws->total_koli }} koli">
+                                {{ $ws->display_koli_smu }}/{{ $ws->total_koli }} koli
                             </td>
-                            <td class="py-3.5 px-4 text-right font-mono text-muted-foreground whitespace-nowrap">
-                                {{ number_format($ws->total_berat_kg, 1) }} kg
+                            <td class="py-3.5 px-4 text-right font-mono whitespace-nowrap {{ abs($ws->display_berat_smu - $ws->total_berat_kg) > 0.01 ? 'text-amber-600 font-semibold' : 'text-muted-foreground' }}"
+                                title="SMU: {{ (float) $ws->display_berat_smu }} kg • Rincian: {{ (float) $ws->total_berat_kg }} kg">
+                                {{ (float) $ws->display_berat_smu }}/{{ (float) $ws->total_berat_kg }} kg
                             </td>
                             <td class="py-3.5 px-4 text-right font-bold text-foreground font-mono whitespace-nowrap">
                                 Rp {{ number_format($ws->total_biaya, 0, ',', '.') }}
