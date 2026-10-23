@@ -113,28 +113,12 @@
             </div>
         </div>
 
-        <div class="text-center text-xs text-muted-foreground mt-6 flex items-center justify-center gap-2">
+        <div class="text-center text-xs text-muted-foreground mt-6">
             <span>Andromeda Cargo &copy; {{ date('Y') }}</span>
-            <span>•</span>
-            <button onclick="toggleTheme()" class="hover:text-foreground text-[11px] underline cursor-pointer">
-                Ganti Tema
-            </button>
         </div>
     </div>
 
     <script>
-
-        function toggleTheme() {
-            const html = document.documentElement;
-            if (html.classList.contains('dark')) {
-                html.classList.remove('dark');
-                localStorage.setItem('theme', 'light');
-            } else {
-                html.classList.add('dark');
-                localStorage.setItem('theme', 'dark');
-            }
-        }
-
         if (localStorage.getItem('theme') === 'light') {
             document.documentElement.classList.remove('dark');
         }
