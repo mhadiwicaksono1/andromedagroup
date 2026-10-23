@@ -112,26 +112,7 @@
                     </button>
                 </form>
 
-                <!-- Demo Account Switcher -->
-                <div class="pt-4 border-t border-border">
-                    <p class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground text-center mb-2">
-                        Akses Cepat Demo:
-                    </p>
-                    <div class="grid grid-cols-3 gap-1.5">
-                        <button type="button" onclick="fillAccount('admin@andromeda.com')" 
-                                class="uk-btn uk-btn-secondary uk-btn-sm text-[11px] py-1 px-2">
-                            Admin
-                        </button>
-                        <button type="button" onclick="fillAccount('operasional@andromeda.com')" 
-                                class="uk-btn uk-btn-secondary uk-btn-sm text-[11px] py-1 px-2">
-                            Operasional
-                        </button>
-                        <button type="button" onclick="fillAccount('keuangan@andromeda.com')" 
-                                class="uk-btn uk-btn-secondary uk-btn-sm text-[11px] py-1 px-2">
-                            Keuangan
-                        </button>
-                    </div>
-                </div>
+
             </div>
         </div>
 
@@ -145,10 +126,6 @@
     </div>
 
     <script>
-        function fillAccount(email) {
-            document.getElementById('email').value = email;
-            document.getElementById('password').value = 'password';
-        }
 
         function toggleTheme() {
             const html = document.documentElement;
