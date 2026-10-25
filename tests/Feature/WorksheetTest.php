@@ -93,5 +93,73 @@ class WorksheetTest extends TestCase
         $indexResponse->assertSee('30/30 koli', false);
         $indexResponse->assertSee('400/400 kg', false);
     }
+
+    public function test_generate_number_skips_soft_deleted_and_existing_numbers(): void
+    {
+        $prefix = 'LK-' . date('Ym') . '-';
+        $w1 = Worksheet::create([
+            'nomor_lembar_kerja' => $prefix . '0001',
+            'tanggal' => now(),
+            'nomor_smu' => 'SMU-1',
+        ]);
+        $w2 = Worksheet::create([
+            'nomor_lembar_kerja' => $prefix . '0002',
+            'tanggal' => now(),
+            'nomor_smu' => 'SMU-2',
+        ]);
+        
+        // Soft-delete the latest one
+        $w2->delete();
+
+        // generateNumber should NOT produce 0002 again; it must return 0003
+        $next = Worksheet::generateNumber();
+        $this->assertEquals($prefix . '0003', $next);
+    }
+
+    public function test_store_worksheet_auto_heals_duplicate_nomor_lembar_kerja(): void
+    {
+        $user = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $customer = Customer::create([
+            'kode_customer' => 'CUST-01',
+            'nama' => 'Cust 01',
+            'kategori' => 'standar',
+            'tarif_default' => 2100,
+            'status' => 'active',
+        ]);
+
+        $prefix = 'LK-' . date('Ym') . '-';
+        Worksheet::create([
+            'nomor_lembar_kerja' => $prefix . '0001',
+            'tanggal' => now(),
+            'nomor_smu' => 'SMU-EXISTING',
+        ]);
+
+        // Attempt to store worksheet with already taken number
+        $payload = [
+            'nomor_lembar_kerja' => $prefix . '0001',
+            'tanggal' => now()->format('Y-m-d'),
+            'nomor_smu' => 'GA-NEW',
+            'origin' => 'lop',
+            'tipe' => 'pecahan',
+            'status' => 'selesai',
+            'items' => [
+                [
+                    'customer_id' => $customer->id,
+                    'jumlah_koli' => 5,
+                    'berat_kg' => 50,
+                    'tarif_per_kg' => 2100,
+                ],
+            ],
+        ];
+
+        $response = $this->actingAs($user)->post(route('worksheets.store'), $payload);
+        $response->assertSessionHasNoErrors();
+        
+        // Auto healed to a non-colliding number (e.g. 0002)
+        $newWorksheet = Worksheet::where('nomor_smu', 'GA-NEW')->first();
+        $this->assertNotNull($newWorksheet);
+        $this->assertNotEquals($prefix . '0001', $newWorksheet->nomor_lembar_kerja);
+        $this->assertEquals($prefix . '0002', $newWorksheet->nomor_lembar_kerja);
+    }
 }
 

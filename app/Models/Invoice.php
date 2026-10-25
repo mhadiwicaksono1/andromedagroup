@@ -78,16 +78,24 @@ class Invoice extends Model
     public static function generateNumber(): string
     {
         $prefix = 'AMG/CB/';
-        $last = self::where('nomor_nota', 'like', $prefix . '%')
-            ->latest('id')
+        $last = self::withTrashed()
+            ->where('nomor_nota', 'like', $prefix . '%')
+            ->orderByDesc('id')
             ->first();
 
         if ($last) {
             $numPart = preg_replace('/[^0-9]/', '', substr($last->nomor_nota, strlen($prefix)));
             $next = ((int) $numPart) + 1;
-            return $prefix . str_pad($next, 3, '0', STR_PAD_LEFT);
+        } else {
+            $next = 1101;
         }
 
-        return $prefix . '1101';
+        $generated = $prefix . str_pad($next, 3, '0', STR_PAD_LEFT);
+        while (self::withTrashed()->where('nomor_nota', $generated)->exists()) {
+            $next++;
+            $generated = $prefix . str_pad($next, 3, '0', STR_PAD_LEFT);
+        }
+
+        return $generated;
     }
 }

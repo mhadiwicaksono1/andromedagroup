@@ -60,6 +60,12 @@ class WorksheetController extends Controller
         $tipe = $request->input('tipe', 'pecahan');
         $itemRules = $tipe === 'pernama' ? 'required|array|size:1' : 'required|array|min:1';
 
+        // Auto-heal duplicate or missing nomor_lembar_kerja
+        $nomor = $request->input('nomor_lembar_kerja');
+        if (!$nomor || Worksheet::withTrashed()->where('nomor_lembar_kerja', $nomor)->exists()) {
+            $request->merge(['nomor_lembar_kerja' => Worksheet::generateNumber()]);
+        }
+
         $validated = $request->validate([
             'nomor_lembar_kerja' => 'required|string|max:50|unique:worksheets,nomor_lembar_kerja',
             'tanggal' => 'required|date',
@@ -78,46 +84,68 @@ class WorksheetController extends Controller
             'items.*.berat_kg' => 'required|numeric|min:0.01',
             'items.*.tarif_per_kg' => 'required|numeric|min:0',
             'items.*.keterangan' => 'nullable|string',
+        ], [
+            'nomor_lembar_kerja.required' => 'Nomor lembar kerja wajib diisi.',
+            'nomor_lembar_kerja.unique' => 'Nomor lembar kerja sudah digunakan di sistem.',
+            'tanggal.required' => 'Tanggal transaksi wajib diisi.',
+            'nomor_smu.required' => 'Nomor Master SMU wajib diisi.',
+            'items.required' => 'Minimal harus ada 1 baris kargo pelanggan.',
+            'items.size' => 'Tipe Pernama hanya boleh berisi tepat 1 baris pelanggan.',
+            'items.min' => 'Minimal harus ada 1 baris kargo pelanggan.',
+            'items.*.customer_id.required' => 'Customer pada setiap baris kargo wajib dipilih.',
+            'items.*.customer_id.exists' => 'Customer yang dipilih tidak ditemukan di sistem.',
+            'items.*.jumlah_koli.required' => 'Jumlah koli pada setiap baris kargo wajib diisi.',
+            'items.*.jumlah_koli.min' => 'Jumlah koli minimal 1.',
+            'items.*.berat_kg.required' => 'Berat (kg) pada setiap baris kargo wajib diisi.',
+            'items.*.berat_kg.min' => 'Berat (kg) minimal 0.01 kg.',
+            'items.*.tarif_per_kg.required' => 'Tarif per kg wajib diisi.',
         ]);
 
-        return DB::transaction(function () use ($validated) {
-            $worksheet = Worksheet::create([
-                'nomor_lembar_kerja' => $validated['nomor_lembar_kerja'],
-                'tanggal' => $validated['tanggal'],
-                'nomor_smu' => $validated['nomor_smu'],
-                'koli_smu' => $validated['koli_smu'] ?? null,
-                'berat_smu' => $validated['berat_smu'] ?? null,
-                'origin' => $validated['origin'] ?? 'lop',
-                'tipe' => $validated['tipe'],
-                'keterangan' => $validated['keterangan'] ?? null,
-                'status' => $validated['status'],
-                'user_id' => auth()->id(),
-            ]);
-
-            foreach ($validated['items'] as $itemData) {
-                // Pembulatan ke atas ke ribuan terdekat sesuai standar nota kargo
-                $rawBiaya = $itemData['berat_kg'] * $itemData['tarif_per_kg'];
-                $totalBiaya = (float) (ceil($rawBiaya / 1000) * 1000);
-
-                WorksheetItem::create([
-                    'worksheet_id' => $worksheet->id,
-                    'customer_id' => $itemData['customer_id'],
-                    'marking' => $itemData['marking'] ?? null,
-                    'origin' => $itemData['origin'] ?? $validated['origin'] ?? 'lop',
-                    'jumlah_koli' => $itemData['jumlah_koli'],
-                    'berat_kg' => $itemData['berat_kg'],
-                    'tarif_per_kg' => $itemData['tarif_per_kg'],
-                    'total_biaya' => $totalBiaya,
-                    'keterangan' => $itemData['keterangan'] ?? null,
+        try {
+            return DB::transaction(function () use ($validated) {
+                $worksheet = Worksheet::create([
+                    'nomor_lembar_kerja' => $validated['nomor_lembar_kerja'],
+                    'tanggal' => $validated['tanggal'],
+                    'nomor_smu' => $validated['nomor_smu'],
+                    'koli_smu' => $validated['koli_smu'] ?? null,
+                    'berat_smu' => $validated['berat_smu'] ?? null,
+                    'origin' => $validated['origin'] ?? 'lop',
+                    'tipe' => $validated['tipe'],
+                    'keterangan' => $validated['keterangan'] ?? null,
                     'status' => $validated['status'],
+                    'user_id' => auth()->id(),
                 ]);
-            }
 
-            $worksheet->recalculateTotals();
+                foreach ($validated['items'] as $itemData) {
+                    // Pembulatan ke atas ke ribuan terdekat sesuai standar nota kargo
+                    $rawBiaya = $itemData['berat_kg'] * $itemData['tarif_per_kg'];
+                    $totalBiaya = (float) (ceil($rawBiaya / 1000) * 1000);
 
-            return redirect()->route('worksheets.show', $worksheet)
-                ->with('success', 'Lembar kerja ' . $worksheet->nomor_lembar_kerja . ' (' . strtoupper($validated['tipe']) . ') berhasil disimpan!');
-        });
+                    WorksheetItem::create([
+                        'worksheet_id' => $worksheet->id,
+                        'customer_id' => $itemData['customer_id'],
+                        'marking' => $itemData['marking'] ?? null,
+                        'origin' => $itemData['origin'] ?? $validated['origin'] ?? 'lop',
+                        'jumlah_koli' => $itemData['jumlah_koli'],
+                        'berat_kg' => $itemData['berat_kg'],
+                        'tarif_per_kg' => $itemData['tarif_per_kg'],
+                        'total_biaya' => $totalBiaya,
+                        'keterangan' => $itemData['keterangan'] ?? null,
+                        'status' => $validated['status'],
+                    ]);
+                }
+
+                $worksheet->recalculateTotals();
+
+                return redirect()->route('worksheets.show', $worksheet)
+                    ->with('success', 'Lembar kerja ' . $worksheet->nomor_lembar_kerja . ' (' . strtoupper($validated['tipe']) . ') berhasil disimpan!');
+            });
+        } catch (\Throwable $e) {
+            report($e);
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Gagal menyimpan lembar kerja: ' . $e->getMessage());
+        }
     }
 
     public function show(Worksheet $worksheet)
@@ -167,48 +195,70 @@ class WorksheetController extends Controller
             'items.*.berat_kg' => 'required|numeric|min:0.01',
             'items.*.tarif_per_kg' => 'required|numeric|min:0',
             'items.*.keterangan' => 'nullable|string',
+        ], [
+            'nomor_lembar_kerja.required' => 'Nomor lembar kerja wajib diisi.',
+            'nomor_lembar_kerja.unique' => 'Nomor lembar kerja sudah digunakan di sistem.',
+            'tanggal.required' => 'Tanggal transaksi wajib diisi.',
+            'nomor_smu.required' => 'Nomor Master SMU wajib diisi.',
+            'items.required' => 'Minimal harus ada 1 baris kargo pelanggan.',
+            'items.size' => 'Tipe Pernama hanya boleh berisi tepat 1 baris pelanggan.',
+            'items.min' => 'Minimal harus ada 1 baris kargo pelanggan.',
+            'items.*.customer_id.required' => 'Customer pada setiap baris kargo wajib dipilih.',
+            'items.*.customer_id.exists' => 'Customer yang dipilih tidak ditemukan di sistem.',
+            'items.*.jumlah_koli.required' => 'Jumlah koli pada setiap baris kargo wajib diisi.',
+            'items.*.jumlah_koli.min' => 'Jumlah koli minimal 1.',
+            'items.*.berat_kg.required' => 'Berat (kg) pada setiap baris kargo wajib diisi.',
+            'items.*.berat_kg.min' => 'Berat (kg) minimal 0.01 kg.',
+            'items.*.tarif_per_kg.required' => 'Tarif per kg wajib diisi.',
         ]);
 
-        return DB::transaction(function () use ($validated, $worksheet) {
-            $worksheet->update([
-                'nomor_lembar_kerja' => $validated['nomor_lembar_kerja'],
-                'tanggal' => $validated['tanggal'],
-                'nomor_smu' => $validated['nomor_smu'],
-                'koli_smu' => $validated['koli_smu'] ?? null,
-                'berat_smu' => $validated['berat_smu'] ?? null,
-                'origin' => $validated['origin'] ?? 'lop',
-                'tipe' => $validated['tipe'],
-                'keterangan' => $validated['keterangan'] ?? null,
-                'status' => $validated['status'],
-            ]);
-
-            // Recreate items
-            $worksheet->items()->forceDelete();
-
-            foreach ($validated['items'] as $itemData) {
-                // Pembulatan ke atas ke ribuan terdekat sesuai standar nota kargo
-                $rawBiaya = $itemData['berat_kg'] * $itemData['tarif_per_kg'];
-                $totalBiaya = (float) (ceil($rawBiaya / 1000) * 1000);
-
-                WorksheetItem::create([
-                    'worksheet_id' => $worksheet->id,
-                    'customer_id' => $itemData['customer_id'],
-                    'marking' => $itemData['marking'] ?? null,
-                    'origin' => $itemData['origin'] ?? $validated['origin'] ?? 'lop',
-                    'jumlah_koli' => $itemData['jumlah_koli'],
-                    'berat_kg' => $itemData['berat_kg'],
-                    'tarif_per_kg' => $itemData['tarif_per_kg'],
-                    'total_biaya' => $totalBiaya,
-                    'keterangan' => $itemData['keterangan'] ?? null,
+        try {
+            return DB::transaction(function () use ($validated, $worksheet) {
+                $worksheet->update([
+                    'nomor_lembar_kerja' => $validated['nomor_lembar_kerja'],
+                    'tanggal' => $validated['tanggal'],
+                    'nomor_smu' => $validated['nomor_smu'],
+                    'koli_smu' => $validated['koli_smu'] ?? null,
+                    'berat_smu' => $validated['berat_smu'] ?? null,
+                    'origin' => $validated['origin'] ?? 'lop',
+                    'tipe' => $validated['tipe'],
+                    'keterangan' => $validated['keterangan'] ?? null,
                     'status' => $validated['status'],
                 ]);
-            }
 
-            $worksheet->recalculateTotals();
+                // Recreate items
+                $worksheet->items()->forceDelete();
 
-            return redirect()->route('worksheets.show', $worksheet)
-                ->with('success', 'Lembar kerja berhasil diperbarui!');
-        });
+                foreach ($validated['items'] as $itemData) {
+                    // Pembulatan ke atas ke ribuan terdekat sesuai standar nota kargo
+                    $rawBiaya = $itemData['berat_kg'] * $itemData['tarif_per_kg'];
+                    $totalBiaya = (float) (ceil($rawBiaya / 1000) * 1000);
+
+                    WorksheetItem::create([
+                        'worksheet_id' => $worksheet->id,
+                        'customer_id' => $itemData['customer_id'],
+                        'marking' => $itemData['marking'] ?? null,
+                        'origin' => $itemData['origin'] ?? $validated['origin'] ?? 'lop',
+                        'jumlah_koli' => $itemData['jumlah_koli'],
+                        'berat_kg' => $itemData['berat_kg'],
+                        'tarif_per_kg' => $itemData['tarif_per_kg'],
+                        'total_biaya' => $totalBiaya,
+                        'keterangan' => $itemData['keterangan'] ?? null,
+                        'status' => $validated['status'],
+                    ]);
+                }
+
+                $worksheet->recalculateTotals();
+
+                return redirect()->route('worksheets.show', $worksheet)
+                    ->with('success', 'Lembar kerja berhasil diperbarui!');
+            });
+        } catch (\Throwable $e) {
+            report($e);
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Gagal memperbarui lembar kerja: ' . $e->getMessage());
+        }
     }
 
     public function updateStatus(Request $request, Worksheet $worksheet)

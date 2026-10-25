@@ -55,8 +55,9 @@ class Payment extends Model
     public static function generateNumber(): string
     {
         $prefix = 'PAY/' . date('Ym') . '/';
-        $last = self::where('nomor_pembayaran', 'like', $prefix . '%')
-            ->latest('id')
+        $last = self::withTrashed()
+            ->where('nomor_pembayaran', 'like', $prefix . '%')
+            ->orderByDesc('id')
             ->first();
 
         if ($last) {
@@ -66,6 +67,12 @@ class Payment extends Model
             $next = 1;
         }
 
-        return $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
+        $generated = $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
+        while (self::withTrashed()->where('nomor_pembayaran', $generated)->exists()) {
+            $next++;
+            $generated = $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
+        }
+
+        return $generated;
     }
 }

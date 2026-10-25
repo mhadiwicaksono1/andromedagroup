@@ -20,6 +20,24 @@
     <form action="{{ route('worksheets.store') }}" method="POST" id="form-worksheet" class="space-y-6">
         @csrf
 
+        <!-- Client-Side & Top-Level Validation Alert Box -->
+        <div id="client-validation-alert" class="uk-alert uk-alert-danger mb-4 p-4 rounded-lg text-xs shadow-sm hidden" uk-alert>
+            <a href class="uk-alert-close" uk-close></a>
+            <div class="font-bold uppercase tracking-wider mb-1 flex items-center gap-2 text-destructive">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+                <span>Mohon Periksa Data Formulir Berikut:</span>
+            </div>
+            <ul id="client-validation-list" class="list-disc list-inside space-y-1 mt-2 text-destructive font-medium"></ul>
+        </div>
+
+        @if($errors->has('items'))
+            <div class="uk-alert uk-alert-danger p-3 rounded-lg text-xs mb-4" uk-alert>
+                <div class="font-bold">{{ $errors->first('items') }}</div>
+            </div>
+        @endif
+
         <!-- Card 1: Master SMU & Tipe Lembar Kerja -->
         <div class="uk-card uk-card-default border border-border">
             <div class="uk-card-header p-5 border-b border-border">
@@ -51,19 +69,28 @@
                             </div>
                         </label>
                     </div>
+                    @error('tipe')
+                        <p class="text-xs text-destructive mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-border">
                     <div>
                         <label class="uk-form-label text-xs font-medium text-foreground mb-1 block">No. Lembar Kerja *</label>
                         <input type="text" name="nomor_lembar_kerja" value="{{ old('nomor_lembar_kerja', $nextNumber) }}" required readonly
-                               class="uk-input text-xs font-mono font-bold bg-muted cursor-not-allowed">
+                               class="uk-input text-xs font-mono font-bold bg-muted cursor-not-allowed @error('nomor_lembar_kerja') border-destructive @enderror">
+                        @error('nomor_lembar_kerja')
+                            <p class="text-xs text-destructive mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
 
                     <div>
                         <label class="uk-form-label text-xs font-medium text-foreground mb-1 block">Tanggal Penerbangan / Transaksi *</label>
                         <input type="date" name="tanggal" value="{{ old('tanggal', $today) }}" required
-                               class="uk-input text-xs">
+                               class="uk-input text-xs @error('tanggal') border-destructive @enderror">
+                        @error('tanggal')
+                            <p class="text-xs text-destructive mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
 
                     <div>
@@ -107,6 +134,9 @@
                             <option value="selesai" {{ old('status', 'selesai') === 'selesai' ? 'selected' : '' }}>Selesai (Siap Ditagihkan ke Pelanggan)</option>
                             <option value="draft" {{ old('status') === 'draft' ? 'selected' : '' }}>Draft (Proses Timbang)</option>
                         </select>
+                        @error('status')
+                            <p class="text-xs text-destructive mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
 
                     <div>
@@ -117,6 +147,9 @@
                             <option value="dps" {{ old('origin') === 'dps' ? 'selected' : '' }}>DPS — Denpasar</option>
                             <option value="cgk" {{ old('origin') === 'cgk' ? 'selected' : '' }}>CGK — Jakarta</option>
                         </select>
+                        @error('origin')
+                            <p class="text-xs text-destructive mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
                 </div>
 
@@ -163,7 +196,7 @@
                             <!-- Default Row 1 -->
                             <tr class="item-row hover:bg-muted/40 transition-colors">
                                 <td class="py-2.5 px-3">
-                                    <select name="items[0][customer_id]" required class="item-customer select2 uk-select text-xs">
+                                    <select name="items[0][customer_id]" class="item-customer select2 uk-select text-xs">
                                         <option value="">-- Cari / Pilih Customer --</option>
                                         @foreach($customers as $c)
                                             <option value="{{ $c->id }}" 
@@ -423,7 +456,7 @@
                 tr.className = 'item-row hover:bg-muted/40 transition-colors';
                 tr.innerHTML = `
                     <td class="py-2.5 px-3">
-                        <select name="items[${rowIndex}][customer_id]" required class="item-customer select2 uk-select text-xs">
+                        <select name="items[${rowIndex}][customer_id]" class="item-customer select2 uk-select text-xs">
                             ${customerOptionsHtml}
                         </select>
                     </td>
@@ -513,6 +546,85 @@
             $(document).on('change', '.item-customer', function() {
                 onCustomerSelect(this);
             });
+        });
+
+        // Form validation on submit
+        const form = document.getElementById('form-worksheet');
+        const alertBox = document.getElementById('client-validation-alert');
+        const alertList = document.getElementById('client-validation-list');
+
+        function showErrorAlert(messages) {
+            if (!alertBox || !alertList) {
+                alert(messages.join('\n'));
+                return;
+            }
+            alertList.innerHTML = messages.map(m => `<li>${m}</li>`).join('');
+            alertBox.classList.remove('hidden');
+            alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        form?.addEventListener('submit', function (e) {
+            const errors = [];
+
+            const smuInput = form.querySelector('input[name="nomor_smu"]');
+            if (!smuInput || !smuInput.value.trim()) {
+                errors.push('Nomor Master SMU wajib diisi.');
+                smuInput?.classList.add('border-destructive');
+            } else {
+                smuInput?.classList.remove('border-destructive');
+            }
+
+            const rows = document.querySelectorAll('.item-row');
+            if (rows.length === 0) {
+                errors.push('Minimal harus ada 1 baris kargo pelanggan.');
+            }
+
+            if (currentTipe === 'pernama' && rows.length > 1) {
+                errors.push('Tipe Pernama hanya boleh berisi tepat 1 baris pelanggan.');
+            }
+
+            rows.forEach((row, idx) => {
+                const custSelect = row.querySelector('.item-customer');
+                const koliInput = row.querySelector('.item-koli');
+                const beratInput = row.querySelector('.item-berat');
+                const tarifInput = row.querySelector('.item-tarif');
+
+                if (!custSelect || !custSelect.value) {
+                    errors.push(`Baris ${idx + 1}: Customer wajib dipilih.`);
+                    $(row).find('.select2-selection').addClass('!border-destructive');
+                } else {
+                    $(row).find('.select2-selection').removeClass('!border-destructive');
+                }
+
+                if (!koliInput || !koliInput.value || parseInt(koliInput.value) < 1) {
+                    errors.push(`Baris ${idx + 1}: Koli kargo minimal 1.`);
+                    koliInput?.classList.add('border-destructive');
+                } else {
+                    koliInput?.classList.remove('border-destructive');
+                }
+
+                if (!beratInput || !beratInput.value || parseFloat(beratInput.value) <= 0) {
+                    errors.push(`Baris ${idx + 1}: Berat kargo (kg) harus lebih dari 0.`);
+                    beratInput?.classList.add('border-destructive');
+                } else {
+                    beratInput?.classList.remove('border-destructive');
+                }
+
+                if (!tarifInput || tarifInput.value === '' || parseFloat(tarifInput.value) < 0) {
+                    errors.push(`Baris ${idx + 1}: Tarif per kg wajib diisi.`);
+                    tarifInput?.classList.add('border-destructive');
+                } else {
+                    tarifInput?.classList.remove('border-destructive');
+                }
+            });
+
+            if (errors.length > 0) {
+                e.preventDefault();
+                showErrorAlert(errors);
+                return false;
+            }
+
+            if (alertBox) alertBox.classList.add('hidden');
         });
 
         // Initialize state based on current tipe

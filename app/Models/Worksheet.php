@@ -86,8 +86,9 @@ class Worksheet extends Model
     public static function generateNumber(): string
     {
         $prefix = 'LK-' . date('Ym') . '-';
-        $last = self::where('nomor_lembar_kerja', 'like', $prefix . '%')
-            ->latest('id')
+        $last = self::withTrashed()
+            ->where('nomor_lembar_kerja', 'like', $prefix . '%')
+            ->orderByDesc('id')
             ->first();
 
         if ($last) {
@@ -97,6 +98,12 @@ class Worksheet extends Model
             $next = 1;
         }
 
-        return $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
+        $generated = $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
+        while (self::withTrashed()->where('nomor_lembar_kerja', $generated)->exists()) {
+            $next++;
+            $generated = $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
+        }
+
+        return $generated;
     }
 }
