@@ -75,7 +75,7 @@
                                 <div class="flex items-center gap-2 mt-1">
                                     @if($c->kategori === 'prioritas')
                                         <span class="inline-flex items-center text-[10px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
-                                            PRIORITAS • Rp {{ number_format($c->tarif_default, 0, ',', '.') }}/kg
+                                            PRIORITAS • Pecahan: Rp {{ number_format($c->tarif_pecahan ?? 2000, 0, ',', '.') }} | Pernama: Rp {{ number_format($c->tarif_pernama ?? 1980, 0, ',', '.') }}
                                         </span>
                                     @else
                                         <span class="inline-flex items-center text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded border border-border">

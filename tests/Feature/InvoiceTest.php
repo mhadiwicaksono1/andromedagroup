@@ -210,4 +210,45 @@ class InvoiceTest extends TestCase
         $response->assertSee('Rp 218.000');
         $response->assertSee('BCA 7195091927 An ABDUL SATAR');
     }
+
+    public function test_invoice_create_filters_out_customers_without_unbilled_worksheets(): void
+    {
+        $user = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        
+        $customerWithUnbilled = Customer::create([
+            'kode_customer' => 'CUST-READY',
+            'nama' => 'Customer With Unbilled LK',
+            'status' => 'active',
+        ]);
+
+        $customerWithoutUnbilled = Customer::create([
+            'kode_customer' => 'CUST-EMPTY',
+            'nama' => 'Customer Without Any LK',
+            'status' => 'active',
+        ]);
+
+        $worksheet = Worksheet::create([
+            'nomor_lembar_kerja' => 'LK-202610-7777',
+            'tanggal' => now(),
+            'nomor_smu' => 'SMU-7777',
+            'status' => 'selesai',
+        ]);
+
+        WorksheetItem::create([
+            'worksheet_id' => $worksheet->id,
+            'customer_id' => $customerWithUnbilled->id,
+            'jumlah_koli' => 5,
+            'berat_kg' => 50,
+            'tarif_per_kg' => 2000,
+            'total_biaya' => 100000,
+            'status' => 'selesai',
+            'invoice_id' => null,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('invoices.create'));
+
+        $response->assertStatus(200);
+        $response->assertSee('Customer With Unbilled LK');
+        $response->assertDontSee('Customer Without Any LK');
+    }
 }

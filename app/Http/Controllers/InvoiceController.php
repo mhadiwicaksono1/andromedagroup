@@ -46,8 +46,21 @@ class InvoiceController extends Controller
     public function create(Request $request)
     {
         $nextNumber = Invoice::generateNumber();
-        $customers = Customer::where('status', 'active')->orderBy('nama')->get();
         $selectedCustomerId = $request->query('customer_id');
+        
+        $customers = Customer::where('status', 'active')
+            ->where(function ($query) use ($selectedCustomerId) {
+                $query->whereHas('worksheetItems', function ($q) {
+                    $q->where('status', 'selesai')
+                      ->whereNull('invoice_id');
+                });
+                if ($selectedCustomerId) {
+                    $query->orWhere('id', $selectedCustomerId);
+                }
+            })
+            ->orderBy('nama')
+            ->get();
+
         $today = now()->toDateString();
 
         return view('invoices.create', compact('nextNumber', 'customers', 'selectedCustomerId', 'today'));

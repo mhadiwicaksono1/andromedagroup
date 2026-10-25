@@ -201,7 +201,9 @@
                                         @foreach($customers as $c)
                                             <option value="{{ $c->id }}" 
                                                     data-kategori="{{ $c->kategori }}" 
-                                                    data-tarif="{{ $c->tarif_default }}"
+                                                    data-tarif="{{ (float) ($c->tarif_default ?? 2100) }}"
+                                                    data-tarif-pecahan="{{ (float) ($c->tarif_pecahan ?? 2000) }}"
+                                                    data-tarif-pernama="{{ (float) ($c->tarif_pernama ?? 1980) }}"
                                                     {{ (old('items.0.customer_id', request('customer_id')) == $c->id) ? 'selected' : '' }}>
                                                 {{ $c->kode_customer }} — {{ $c->nama }} [{{ strtoupper($c->kategori) }}]
                                             </option>
@@ -221,16 +223,9 @@
                                            class="item-berat uk-input text-xs font-mono text-right">
                                 </td>
                                 <td class="py-2.5 px-3">
-                                    <div class="space-y-1">
-                                        <input type="number" step="10" name="items[0][tarif_per_kg]" value="{{ old('items.0.tarif_per_kg', 2100) }}" min="0" required 
-                                               class="item-tarif uk-input text-xs font-mono text-right font-semibold">
-                                        <div class="quick-tarif-pills flex items-center justify-end gap-1">
-                                            <button type="button" onclick="setRowTarif(this, 2000)" title="Pilih tarif 2.000 (Prioritas)"
-                                                    class="uk-btn uk-btn-default uk-btn-xs text-[9px] py-0 px-1 text-muted-foreground hover:text-foreground">2000</button>
-                                            <button type="button" onclick="setRowTarif(this, 1980)" title="Pilih tarif 1.980 (Prioritas)"
-                                                    class="uk-btn uk-btn-default uk-btn-xs text-[9px] py-0 px-1 text-muted-foreground hover:text-foreground">1980</button>
-                                        </div>
-                                    </div>
+                                    <input type="number" step="10" name="items[0][tarif_per_kg]" value="{{ old('items.0.tarif_per_kg', 2100) }}" min="0" required readonly
+                                           class="item-tarif uk-input text-xs font-mono text-right font-semibold bg-muted/60 cursor-not-allowed"
+                                           title="Tarif terkunci otomatis sesuai skema Master Customer">
                                 </td>
                                 <td class="py-2.5 px-3 text-right">
                                     <span class="item-total-text font-bold text-foreground font-mono">Rp 0</span>
@@ -289,7 +284,11 @@
 <template id="customer-options-template">
     <option value="">-- Pilih Customer --</option>
     @foreach($customers as $c)
-        <option value="{{ $c->id }}" data-kategori="{{ $c->kategori }}" data-tarif="{{ $c->tarif_default }}">
+        <option value="{{ $c->id }}" 
+                data-kategori="{{ $c->kategori }}" 
+                data-tarif="{{ (float) ($c->tarif_default ?? 2100) }}"
+                data-tarif-pecahan="{{ (float) ($c->tarif_pecahan ?? 2000) }}"
+                data-tarif-pernama="{{ (float) ($c->tarif_pernama ?? 1980) }}">
             {{ $c->kode_customer }} — {{ $c->nama }} [{{ strtoupper($c->kategori) }}]
         </option>
     @endforeach
@@ -298,6 +297,20 @@
 @push('scripts')
 <script>
     let currentTipe = '{{ old('tipe', 'pecahan') }}';
+
+    function getTarifForOption(opt, tipe) {
+        if (!opt || !opt.value) return 2100;
+        const kat = opt.getAttribute('data-kategori');
+        if (kat === 'prioritas') {
+            if (tipe === 'pernama') {
+                return parseFloat(opt.getAttribute('data-tarif-pernama')) || 1980;
+            } else {
+                return parseFloat(opt.getAttribute('data-tarif-pecahan')) || 2000;
+            }
+        } else {
+            return parseFloat(opt.getAttribute('data-tarif')) || 2100;
+        }
+    }
 
     function onTipeChange(tipe) {
         currentTipe = tipe;
@@ -320,32 +333,34 @@
             const firstRowDelete = document.querySelector('.item-row .btn-remove-row');
             if (firstRowDelete) firstRowDelete.classList.remove('invisible');
         }
+
+        // Auto update tarif on all rows based on new tipe
+        document.querySelectorAll('.item-row').forEach(row => {
+            const custSelect = row.querySelector('.item-customer');
+            if (custSelect && custSelect.value) {
+                const opt = custSelect.options[custSelect.selectedIndex];
+                const inputTarif = row.querySelector('.item-tarif');
+                if (opt && inputTarif) {
+                    inputTarif.value = getTarifForOption(opt, currentTipe);
+                }
+            }
+        });
+
         recalculate();
     }
 
     function onCustomerSelect(selectEl) {
         const selectedOpt = selectEl.options[selectEl.selectedIndex];
         if (!selectedOpt) return;
-        const tarif = selectedOpt.getAttribute('data-tarif');
+        const tarif = getTarifForOption(selectedOpt, currentTipe);
         const row = selectEl.closest('.item-row');
-        if (row && tarif) {
-            const inputTarif = row.querySelector('.item-tarif');
-            if (inputTarif) {
-                inputTarif.value = parseFloat(tarif);
-            }
-        }
-        recalculate();
-    }
-
-    function setRowTarif(btn, tarif) {
-        const row = btn.closest('.item-row');
         if (row) {
             const inputTarif = row.querySelector('.item-tarif');
             if (inputTarif) {
                 inputTarif.value = tarif;
-                recalculate();
             }
         }
+        recalculate();
     }
 
     function recalculate() {
@@ -473,16 +488,9 @@
                                class="item-berat uk-input text-xs font-mono text-right">
                     </td>
                     <td class="py-2.5 px-3">
-                        <div class="space-y-1">
-                            <input type="number" step="10" name="items[${rowIndex}][tarif_per_kg]" value="2100" min="0" required 
-                                   class="item-tarif uk-input text-xs font-mono text-right font-semibold">
-                            <div class="quick-tarif-pills flex items-center justify-end gap-1">
-                                <button type="button" onclick="setRowTarif(this, 2000)" title="Pilih tarif 2.000"
-                                        class="uk-btn uk-btn-default uk-btn-xs text-[9px] py-0 px-1 text-muted-foreground hover:text-foreground">2000</button>
-                                <button type="button" onclick="setRowTarif(this, 1980)" title="Pilih tarif 1.980"
-                                        class="uk-btn uk-btn-default uk-btn-xs text-[9px] py-0 px-1 text-muted-foreground hover:text-foreground">1980</button>
-                            </div>
-                        </div>
+                        <input type="number" step="10" name="items[${rowIndex}][tarif_per_kg]" value="2100" min="0" required readonly
+                               class="item-tarif uk-input text-xs font-mono text-right font-semibold bg-muted/60 cursor-not-allowed"
+                               title="Tarif terkunci otomatis sesuai skema Master Customer">
                     </td>
                     <td class="py-2.5 px-3 text-right">
                         <span class="item-total-text font-bold text-foreground font-mono">Rp 0</span>
@@ -631,12 +639,13 @@
         onTipeChange(currentTipe);
 
         // Auto trigger customer select for initial preselected customer
-        const initialCustSelect = document.querySelector('.item-customer');
-        if (initialCustSelect && initialCustSelect.value) {
-            onCustomerSelect(initialCustSelect);
-        } else {
-            recalculate();
-        }
+        document.querySelectorAll('.item-row').forEach(row => {
+            const custSelect = row.querySelector('.item-customer');
+            if (custSelect && custSelect.value) {
+                onCustomerSelect(custSelect);
+            }
+        });
+        recalculate();
     });
 </script>
 @endpush

@@ -161,5 +161,82 @@ class WorksheetTest extends TestCase
         $this->assertNotEquals($prefix . '0001', $newWorksheet->nomor_lembar_kerja);
         $this->assertEquals($prefix . '0002', $newWorksheet->nomor_lembar_kerja);
     }
+
+    public function test_worksheet_show_page_has_buat_lembar_kerja_baru_button(): void
+    {
+        $user = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $worksheet = Worksheet::create([
+            'nomor_lembar_kerja' => 'LK-202610-8888',
+            'tanggal' => now(),
+            'nomor_smu' => 'SMU-BUTTON-TEST',
+            'status' => 'selesai',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('worksheets.show', $worksheet));
+
+        $response->assertStatus(200);
+        $response->assertSee('Buat Lembar Kerja Baru');
+        $response->assertSee(route('worksheets.create'));
+    }
+
+    public function test_customer_prioritas_stores_two_tarifs_and_standar_stores_one(): void
+    {
+        $user = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        // Create Prioritas customer
+        $respPrioritas = $this->actingAs($user)->post(route('customers.store'), [
+            'nama' => 'PT Prioritas Kargo',
+            'kategori' => 'prioritas',
+            'tarif_pecahan' => 2000,
+            'tarif_pernama' => 1980,
+            'status' => 'active',
+        ]);
+        $respPrioritas->assertRedirect();
+
+        $custPrioritas = Customer::where('nama', 'PT Prioritas Kargo')->first();
+        $this->assertNotNull($custPrioritas);
+        $this->assertEquals('prioritas', $custPrioritas->kategori);
+        $this->assertEquals(2000, $custPrioritas->tarif_pecahan);
+        $this->assertEquals(1980, $custPrioritas->tarif_pernama);
+        $this->assertEquals(2000, $custPrioritas->getTarifForTipe('pecahan'));
+        $this->assertEquals(1980, $custPrioritas->getTarifForTipe('pernama'));
+
+        // Create Standar customer
+        $respStandar = $this->actingAs($user)->post(route('customers.store'), [
+            'nama' => 'CV Standar Express',
+            'kategori' => 'standar',
+            'tarif_default' => 2100,
+            'status' => 'active',
+        ]);
+        $respStandar->assertRedirect();
+
+        $custStandar = Customer::where('nama', 'CV Standar Express')->first();
+        $this->assertNotNull($custStandar);
+        $this->assertEquals('standar', $custStandar->kategori);
+        $this->assertEquals(2100, $custStandar->tarif_default);
+        $this->assertEquals(2100, $custStandar->getTarifForTipe('pecahan'));
+        $this->assertEquals(2100, $custStandar->getTarifForTipe('pernama'));
+    }
+
+    public function test_worksheet_create_has_locked_rate_inputs_and_customer_data_attributes(): void
+    {
+        $user = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $cust = Customer::create([
+            'kode_customer' => 'CUST-PRIO',
+            'nama' => 'Cust Prioritas Test',
+            'kategori' => 'prioritas',
+            'tarif_pecahan' => 2000,
+            'tarif_pernama' => 1980,
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('worksheets.create'));
+
+        $response->assertStatus(200);
+        $response->assertSee('data-tarif-pecahan="2000"', false);
+        $response->assertSee('data-tarif-pernama="1980"', false);
+        $response->assertSee('readonly', false);
+        $response->assertDontSee('quick-tarif-pills', false);
+    }
 }
 

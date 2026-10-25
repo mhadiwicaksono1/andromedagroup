@@ -45,6 +45,10 @@ class CustomerController extends Controller
 
     public function store(Request $request)
     {
+        if (!$request->filled('kode_customer')) {
+            $request->merge(['kode_customer' => Customer::generateCode()]);
+        }
+
         $validated = $request->validate([
             'kode_customer' => 'required|string|max:50|unique:customers,kode_customer',
             'nama' => 'required|string|max:255',
@@ -53,8 +57,20 @@ class CustomerController extends Controller
             'alamat' => 'nullable|string',
             'status' => 'required|in:active,inactive',
             'kategori' => 'required|in:standar,prioritas',
-            'tarif_default' => 'required|numeric|min:0',
+            'tarif_default' => 'nullable|numeric|min:0',
+            'tarif_pecahan' => 'nullable|numeric|min:0',
+            'tarif_pernama' => 'nullable|numeric|min:0',
         ]);
+
+        if ($validated['kategori'] === 'prioritas') {
+            $validated['tarif_pecahan'] = $validated['tarif_pecahan'] ?? 2000;
+            $validated['tarif_pernama'] = $validated['tarif_pernama'] ?? 1980;
+            $validated['tarif_default'] = $validated['tarif_pecahan'];
+        } else {
+            $validated['tarif_default'] = $validated['tarif_default'] ?? 2100;
+            $validated['tarif_pecahan'] = $validated['tarif_default'];
+            $validated['tarif_pernama'] = $validated['tarif_default'];
+        }
 
         $customer = Customer::create($validated);
 
@@ -101,8 +117,20 @@ class CustomerController extends Controller
             'alamat' => 'nullable|string',
             'status' => 'required|in:active,inactive',
             'kategori' => 'required|in:standar,prioritas',
-            'tarif_default' => 'required|numeric|min:0',
+            'tarif_default' => 'nullable|numeric|min:0',
+            'tarif_pecahan' => 'nullable|numeric|min:0',
+            'tarif_pernama' => 'nullable|numeric|min:0',
         ]);
+
+        if ($validated['kategori'] === 'prioritas') {
+            $validated['tarif_pecahan'] = $validated['tarif_pecahan'] ?? 2000;
+            $validated['tarif_pernama'] = $validated['tarif_pernama'] ?? 1980;
+            $validated['tarif_default'] = $validated['tarif_pecahan'];
+        } else {
+            $validated['tarif_default'] = $validated['tarif_default'] ?? 2100;
+            $validated['tarif_pecahan'] = $validated['tarif_default'];
+            $validated['tarif_pernama'] = $validated['tarif_default'];
+        }
 
         $customer->update($validated);
 

@@ -18,11 +18,26 @@ class Customer extends Model
         'status',
         'kategori',
         'tarif_default',
+        'tarif_pecahan',
+        'tarif_pernama',
     ];
 
     protected $casts = [
         'tarif_default' => 'decimal:2',
+        'tarif_pecahan' => 'decimal:2',
+        'tarif_pernama' => 'decimal:2',
     ];
+
+    public function getTarifForTipe(string $tipe = 'pecahan'): float
+    {
+        if ($this->kategori === 'prioritas') {
+            if ($tipe === 'pernama') {
+                return (float) ($this->tarif_pernama ?: 1980);
+            }
+            return (float) ($this->tarif_pecahan ?: 2000);
+        }
+        return (float) ($this->tarif_default ?: 2100);
+    }
 
     public function worksheetItems()
     {

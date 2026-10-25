@@ -42,29 +42,46 @@
             </div>
 
             <!-- Kategori Customer & Opsi Tarif -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-lg bg-muted/40 border border-border">
-                <div>
-                    <label class="uk-form-label text-xs font-semibold text-foreground uppercase tracking-wider mb-1.5 block">Kategori Pelanggan *</label>
-                    <select name="kategori" id="select-kategori" required class="uk-select text-xs" onchange="updateTarifOptions()">
-                        <option value="standar" {{ old('kategori', $customer->kategori ?? 'standar') === 'standar' ? 'selected' : '' }}>Standar (Tarif Rp 2.100/kg)</option>
-                        <option value="prioritas" {{ old('kategori', $customer->kategori ?? 'standar') === 'prioritas' ? 'selected' : '' }}>Prioritas (Pilihan Rp 2.000 / Rp 1.980)</option>
-                    </select>
-                    <p class="text-[11px] text-muted-foreground mt-1">Klasifikasi customer untuk penentuan skema tarif otomatis pada lembar kerja.</p>
+            <div class="p-4 rounded-lg bg-muted/40 border border-border space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="uk-form-label text-xs font-semibold text-foreground uppercase tracking-wider mb-1.5 block">Kategori Pelanggan *</label>
+                        <select name="kategori" id="select-kategori" required class="uk-select text-xs" onchange="updateTarifOptions()">
+                            <option value="standar" {{ old('kategori', $customer->kategori ?? 'standar') === 'standar' ? 'selected' : '' }}>Standar (Tarif Tunggal Rp 2.100/kg)</option>
+                            <option value="prioritas" {{ old('kategori', $customer->kategori ?? 'standar') === 'prioritas' ? 'selected' : '' }}>Prioritas (2 Skema Tarif: Pecahan &amp; Pernama)</option>
+                        </select>
+                        <p class="text-[11px] text-muted-foreground mt-1">Klasifikasi customer untuk penentuan skema tarif otomatis pada lembar kerja.</p>
+                    </div>
+
+                    <!-- Mode Standar: 1 Input Tarif -->
+                    <div id="container-tarif-standar" class="{{ old('kategori', $customer->kategori ?? 'standar') === 'prioritas' ? 'hidden' : '' }}">
+                        <label class="uk-form-label text-xs font-semibold text-foreground uppercase tracking-wider mb-1.5 block">Tarif Standar (Rp / kg) *</label>
+                        <input type="number" step="10" name="tarif_default" id="input-tarif-default" value="{{ old('tarif_default', $customer->tarif_default ?? 2100) }}"
+                               class="uk-input text-xs font-mono font-bold text-foreground">
+                        <p class="text-[11px] text-muted-foreground mt-1">Acuan tarif standar: <span class="font-bold text-foreground">Rp 2.100 / kg</span> (terkunci otomatis saat membuat lembar kerja).</p>
+                    </div>
                 </div>
 
-                <div>
-                    <label class="uk-form-label text-xs font-semibold text-foreground uppercase tracking-wider mb-1.5 block">Tarif Default Kargo (Rp / kg) *</label>
-                    <div class="space-y-1.5">
-                        <input type="number" step="10" name="tarif_default" id="input-tarif-default" value="{{ old('tarif_default', $customer->tarif_default ?? 2100) }}" required
+                <!-- Mode Prioritas: 2 Input Tarif (Pecahan & Pernama) -->
+                <div id="container-tarif-prioritas" class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-border {{ old('kategori', $customer->kategori ?? 'standar') === 'prioritas' ? '' : 'hidden' }}">
+                    <div>
+                        <label class="uk-form-label text-xs font-semibold text-amber-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                            <span>1. Tarif Pecahan (Rp / kg) *</span>
+                            <span class="text-[10px] text-muted-foreground font-normal">Kargo Konsolidasi</span>
+                        </label>
+                        <input type="number" step="10" name="tarif_pecahan" id="input-tarif-pecahan" value="{{ old('tarif_pecahan', $customer->tarif_pecahan ?? 2000) }}"
                                class="uk-input text-xs font-mono font-bold text-foreground">
-                        <div id="quick-tarif-prioritas" class="flex items-center gap-1.5 {{ old('kategori', $customer->kategori ?? 'standar') === 'prioritas' ? '' : 'hidden' }}">
-                            <span class="text-[10px] text-muted-foreground">Pilihan Tarif Prioritas:</span>
-                            <button type="button" onclick="setTarif(2000)" class="uk-btn uk-btn-default uk-btn-xs text-[10px] py-0.5 px-2">Rp 2.000</button>
-                            <button type="button" onclick="setTarif(1980)" class="uk-btn uk-btn-default uk-btn-xs text-[10px] py-0.5 px-2">Rp 1.980</button>
-                        </div>
-                        <div id="quick-tarif-standar" class="text-[10px] text-muted-foreground {{ old('kategori', $customer->kategori ?? 'standar') === 'prioritas' ? 'hidden' : '' }}">
-                            Tarif standar acuan: <span class="font-bold text-foreground">Rp 2.100 / kg</span>
-                        </div>
+                        <p class="text-[11px] text-muted-foreground mt-1">Otomatis dipakai jika lembar kerja bertipe <span class="font-bold text-foreground">Pecahan</span> (acuan: Rp 2.000).</p>
+                    </div>
+
+                    <div>
+                        <label class="uk-form-label text-xs font-semibold text-blue-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                            <span>2. Tarif Pernama (Rp / kg) *</span>
+                            <span class="text-[10px] text-muted-foreground font-normal">Khusus 1 Customer</span>
+                        </label>
+                        <input type="number" step="10" name="tarif_pernama" id="input-tarif-pernama" value="{{ old('tarif_pernama', $customer->tarif_pernama ?? 1980) }}"
+                               class="uk-input text-xs font-mono font-bold text-foreground">
+                        <p class="text-[11px] text-muted-foreground mt-1">Otomatis dipakai jika lembar kerja bertipe <span class="font-bold text-foreground">Pernama</span> (acuan: Rp 1.980).</p>
                     </div>
                 </div>
             </div>
@@ -114,24 +131,16 @@
 <script>
     function updateTarifOptions() {
         const kat = document.getElementById('select-kategori').value;
-        const inputTarif = document.getElementById('input-tarif-default');
-        const optPrioritas = document.getElementById('quick-tarif-prioritas');
-        const optStandar = document.getElementById('quick-tarif-standar');
-        if (kat === 'prioritas') {
-            optPrioritas.classList.remove('hidden');
-            optStandar.classList.add('hidden');
-            if (inputTarif.value == 2100 || !inputTarif.value) {
-                inputTarif.value = 2000;
-            }
-        } else {
-            optPrioritas.classList.add('hidden');
-            optStandar.classList.remove('hidden');
-            inputTarif.value = 2100;
-        }
-    }
+        const containerStandar = document.getElementById('container-tarif-standar');
+        const containerPrioritas = document.getElementById('container-tarif-prioritas');
 
-    function setTarif(val) {
-        document.getElementById('input-tarif-default').value = val;
+        if (kat === 'prioritas') {
+            containerStandar.classList.add('hidden');
+            containerPrioritas.classList.remove('hidden');
+        } else {
+            containerStandar.classList.remove('hidden');
+            containerPrioritas.classList.add('hidden');
+        }
     }
 </script>
 @endpush
