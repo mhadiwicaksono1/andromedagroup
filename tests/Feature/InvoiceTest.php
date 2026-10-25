@@ -251,4 +251,66 @@ class InvoiceTest extends TestCase
         $response->assertSee('Customer With Unbilled LK');
         $response->assertDontSee('Customer Without Any LK');
     }
+
+    public function test_deleting_invoice_reverts_worksheet_and_items_to_open_status(): void
+    {
+        $user = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $customer = Customer::create([
+            'kode_customer' => 'CUST-REVERT',
+            'nama' => 'Customer Revert Test',
+            'status' => 'active',
+        ]);
+
+        $worksheet = Worksheet::create([
+            'nomor_lembar_kerja' => 'LK-202610-6666',
+            'tanggal' => now(),
+            'nomor_smu' => 'SMU-6666',
+            'status' => 'dinotakan',
+        ]);
+
+        $item = WorksheetItem::create([
+            'worksheet_id' => $worksheet->id,
+            'customer_id' => $customer->id,
+            'jumlah_koli' => 10,
+            'berat_kg' => 100,
+            'tarif_per_kg' => 2000,
+            'total_biaya' => 200000,
+            'status' => 'dinotakan',
+        ]);
+
+        $invoice = Invoice::create([
+            'nomor_nota' => 'AMG/CB/9999',
+            'tanggal' => now(),
+            'customer_id' => $customer->id,
+            'tipe_nota' => 'pecahan',
+            'subtotal_lembar_kerja' => 200000,
+            'biaya_adm' => 3000,
+            'penyesuaian_biaya' => 0,
+            'total_nota' => 203000,
+            'sisa_hutang_lama' => 0,
+            'total_tagihan' => 203000,
+            'jumlah_dibayar' => 0,
+            'sisa_piutang' => 203000,
+            'status_pembayaran' => 'belum_lunas',
+            'user_id' => $user->id,
+        ]);
+
+        $item->update(['invoice_id' => $invoice->id]);
+
+        // Delete invoice
+        $response = $this->actingAs($user)->delete(route('invoices.destroy', $invoice));
+        $response->assertRedirect(route('invoices.index'));
+
+        // Verify invoice is deleted
+        $this->assertSoftDeleted('invoices', ['id' => $invoice->id]);
+
+        // Verify worksheet item is reverted to 'selesai' and unlinked
+        $item->refresh();
+        $this->assertNull($item->invoice_id);
+        $this->assertEquals('selesai', $item->status);
+
+        // Verify parent worksheet is reverted to 'selesai'
+        $worksheet->refresh();
+        $this->assertEquals('selesai', $worksheet->status);
+    }
 }
