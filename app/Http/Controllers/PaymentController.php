@@ -244,7 +244,7 @@ class PaymentController extends Controller
             ]);
         });
 
-        return redirect()->route('invoices.show', $invoice)
+        return redirect()->back(fallback: route('invoices.show', $invoice))
             ->with('success', 'Pembayaran sebesar Rp ' . number_format($validated['jumlah'], 0, ',', '.') . ' untuk nota ' . $invoice->nomor_nota . ' berhasil dicatat!');
     }
 }

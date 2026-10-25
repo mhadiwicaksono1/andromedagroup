@@ -390,7 +390,7 @@ class InvoiceTest extends TestCase
         $this->assertEquals('selesai', $worksheet->status);
     }
 
-    public function test_invoice_index_shows_bayar_piutang_button_for_unpaid_invoices(): void
+    public function test_invoice_index_shows_bayar_piutang_modal_for_unpaid_invoices(): void
     {
         $user = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $customer = Customer::create([
@@ -417,6 +417,24 @@ class InvoiceTest extends TestCase
         $response = $this->actingAs($user)->get(route('invoices.index'));
         $response->assertStatus(200);
         $response->assertSee('Bayar Piutang');
-        $response->assertSee(route('payments.create', ['customer_id' => $customer->id, 'invoice_id' => $invoice->id]));
+        $response->assertSee('uk-toggle="target: #modal-payment-' . $invoice->id . '"', false);
+        $response->assertSee('id="modal-payment-' . $invoice->id . '"', false);
+        $response->assertSee(route('invoices.payments.store', $invoice));
+
+        // Test submitting payment via modal route
+        $payResponse = $this->actingAs($user)
+            ->from(route('invoices.index'))
+            ->post(route('invoices.payments.store', $invoice), [
+                'tanggal' => now()->toDateString(),
+                'jumlah' => 103000,
+                'metode' => 'transfer',
+                'catatan' => 'Pelunasan via modal invoice index',
+            ]);
+
+        $payResponse->assertRedirect(route('invoices.index'));
+        $invoice->refresh();
+        $this->assertEquals(103000, $invoice->jumlah_dibayar);
+        $this->assertEquals(0, $invoice->sisa_piutang);
+        $this->assertEquals('lunas', $invoice->status_pembayaran);
     }
 }

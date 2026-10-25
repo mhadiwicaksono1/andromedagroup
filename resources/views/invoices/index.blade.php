@@ -122,28 +122,27 @@
                                 @else
                                     <span class="uk-label uk-label-danger text-[10px]">BELUM LUNAS</span>
                                 @endif
-                            </td>
                             <td class="py-3.5 px-4 text-right">
                                 <div class="flex items-center justify-end gap-1">
                                     @if($inv->sisa_piutang > 0)
-                                        <a href="{{ route('payments.create', ['customer_id' => $inv->customer_id, 'invoice_id' => $inv->id]) }}" 
+                                        <button type="button" uk-toggle="target: #modal-payment-{{ $inv->id }}" 
                                            title="Bayar Piutang Nota {{ $inv->nomor_nota }}"
                                            class="uk-btn uk-btn-primary uk-btn-xs px-2 py-1 text-[11px] font-semibold flex items-center gap-1 shadow-xs whitespace-nowrap">
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
                                             </svg>
                                             <span>Bayar Piutang</span>
-                                        </a>
+                                        </button>
                                     @endif
                                     <a href="{{ route('invoices.show', $inv) }}" title="Lihat Rincian"
-                                       class="uk-btn uk-btn-default uk-btn-xs p-1.5">
+                                        class="uk-btn uk-btn-default uk-btn-xs p-1.5">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                         </svg>
                                     </a>
                                     <a href="{{ route('invoices.print', $inv) }}" target="_blank" title="Cetak Nota Resmi"
-                                       class="uk-btn uk-btn-default uk-btn-xs p-1.5 text-primary">
+                                        class="uk-btn uk-btn-default uk-btn-xs p-1.5 text-primary">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
                                         </svg>
@@ -169,4 +168,66 @@
         @endif
     </div>
 </div>
+
+<!-- Modal Catat Pembayaran Piutang (Franken UI Modal) -->
+@foreach($invoices as $inv)
+    @if($inv->sisa_piutang > 0)
+    <div id="modal-payment-{{ $inv->id }}" uk-modal>
+        <div class="uk-modal-dialog uk-modal-body bg-card border border-border rounded-xl max-w-md p-6 text-left">
+            <button class="uk-modal-close-default" type="button" uk-close></button>
+            
+            <h3 class="text-lg font-bold tracking-tight text-foreground mb-1">Catat Pembayaran Piutang</h3>
+            <p class="text-xs text-muted-foreground mb-4">
+                Nota: <span class="font-mono font-bold text-foreground">{{ $inv->nomor_nota }}</span> &bull; 
+                Customer: <span class="font-semibold text-foreground">{{ $inv->customer->nama ?? '-' }}</span>
+            </p>
+
+            <form action="{{ route('invoices.payments.store', $inv) }}" method="POST" class="space-y-4">
+                @csrf
+                <div>
+                    <label class="uk-form-label text-xs font-semibold text-foreground uppercase tracking-wider mb-1 block">Maksimal Sisa Piutang</label>
+                    <div class="p-2.5 rounded-lg bg-muted font-mono font-bold text-destructive text-sm">
+                        Rp {{ number_format($inv->sisa_piutang, 0, ',', '.') }}
+                    </div>
+                </div>
+
+                <div>
+                    <label class="uk-form-label text-xs font-semibold text-foreground uppercase tracking-wider mb-1 block">Tanggal Pembayaran *</label>
+                    <input type="date" name="tanggal" value="{{ now()->toDateString() }}" required
+                           class="uk-input text-xs">
+                </div>
+
+                <div>
+                    <label class="uk-form-label text-xs font-semibold text-foreground uppercase tracking-wider mb-1 block">Jumlah Pembayaran (Rp) *</label>
+                    <input type="number" name="jumlah" max="{{ $inv->sisa_piutang }}" min="1" step="any" value="{{ $inv->sisa_piutang }}" required
+                           class="uk-input text-xs font-mono font-bold text-emerald-500">
+                </div>
+
+                <div>
+                    <label class="uk-form-label text-xs font-semibold text-foreground uppercase tracking-wider mb-1 block">Metode Pembayaran *</label>
+                    <select name="metode" required class="uk-select text-xs">
+                        <option value="transfer">Transfer Bank BCA</option>
+                        <option value="tunai">Cash</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="uk-form-label text-xs font-semibold text-foreground uppercase tracking-wider mb-1 block">Keterangan / Nomor Referensi Transfer</label>
+                    <input type="text" name="catatan" placeholder="Contoh: Bukti transfer BCA ref#889102"
+                           class="uk-input text-xs">
+                </div>
+
+                <div class="pt-3 flex justify-end gap-2 border-t border-border">
+                    <button type="button" class="uk-btn uk-btn-default uk-modal-close uk-btn-sm text-xs shadow-xs">
+                        Batal
+                    </button>
+                    <button type="submit" class="uk-btn uk-btn-primary uk-btn-sm text-xs shadow-sm">
+                        Simpan Pembayaran
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
+@endforeach
 @endsection
