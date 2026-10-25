@@ -65,10 +65,8 @@
 
                 <select name="metode" class="uk-select text-xs">
                     <option value="">Semua Metode</option>
-                    <option value="transfer" {{ $metode === 'transfer' ? 'selected' : '' }}>Transfer Bank</option>
-                    <option value="tunai" {{ $metode === 'tunai' ? 'selected' : '' }}>Tunai (Cash)</option>
-                    <option value="giro" {{ $metode === 'giro' ? 'selected' : '' }}>Bilyet Giro</option>
-                    <option value="qris" {{ $metode === 'qris' ? 'selected' : '' }}>QRIS</option>
+                    <option value="transfer" {{ $metode === 'transfer' ? 'selected' : '' }}>Transfer Bank BCA</option>
+                    <option value="tunai" {{ $metode === 'tunai' ? 'selected' : '' }}>Cash</option>
                 </select>
 
                 <input type="date" name="start_date" value="{{ $startDate }}" title="Dari Tanggal" class="uk-input text-xs w-auto">
@@ -122,7 +120,7 @@
                             </td>
                             <td class="py-3.5 px-4 whitespace-nowrap">
                                 <span class="badge-metode-{{ $p->metode ?? 'transfer' }}">
-                                    {{ $p->metode }}
+                                    {{ $p->metode === 'transfer' ? 'Transfer Bank BCA' : ($p->metode === 'tunai' || $p->metode === 'cash' ? 'Cash' : ucfirst($p->metode)) }}
                                 </span>
                             </td>
                             <td class="py-3.5 px-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">

@@ -224,8 +224,8 @@
             <tr>
                 <td class="label">Metode Pembayaran</td>
                 <td class="colon">:</td>
-                <td class="value" style="text-transform: uppercase; font-weight: bold;">
-                    {{ $payment->metode }}
+                <td class="value" style="font-weight: bold;">
+                    {{ $payment->metode === 'transfer' ? 'TRANSFER BANK BCA' : ($payment->metode === 'tunai' || $payment->metode === 'cash' ? 'CASH' : strtoupper($payment->metode)) }}
                     @if($payment->catatan)
                         <span style="font-weight: normal; color: #475569;">(Referensi: {{ $payment->catatan }})</span>
                     @endif

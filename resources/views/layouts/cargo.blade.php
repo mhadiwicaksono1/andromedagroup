@@ -309,7 +309,8 @@
             border-color: #0284c7 !important;
         }
 
-        .badge-metode-tunai {
+        .badge-metode-tunai,
+        .badge-metode-cash {
             display: inline-flex;
             align-items: center;
             padding: 0.15rem 0.55rem;
@@ -321,7 +322,8 @@
             color: #065f46 !important;            /* emerald-800 */
             border: 1px solid #6ee7b7 !important;
         }
-        html.dark .badge-metode-tunai {
+        html.dark .badge-metode-tunai,
+        html.dark .badge-metode-cash {
             background-color: rgba(6, 95, 70, 0.3) !important;
             color: #6ee7b7 !important;
             border-color: #059669 !important;

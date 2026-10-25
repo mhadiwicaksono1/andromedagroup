@@ -79,7 +79,7 @@ class InvoiceController extends Controller
             'biaya_adm' => 'nullable|numeric|min:0',
             'penyesuaian_biaya' => 'nullable|numeric',
             'jumlah_dibayar' => 'nullable|numeric|min:0',
-            'metode_pembayaran' => 'nullable|string|in:transfer,tunai,giro,qris',
+            'metode_pembayaran' => 'nullable|string|in:transfer,tunai,cash,giro,qris',
             'catatan' => 'nullable|string',
         ]);
 
@@ -166,7 +166,7 @@ class InvoiceController extends Controller
                     'invoice_id' => $invoice->id,
                     'customer_id' => $request->customer_id,
                     'jumlah' => $jumlahDibayar,
-                    'metode' => $request->metode_pembayaran ?? 'transfer',
+                    'metode' => $request->metode_pembayaran === 'cash' ? 'tunai' : ($request->metode_pembayaran ?? 'transfer'),
                     'catatan' => 'Pembayaran awal saat nota diterbitkan',
                     'user_id' => auth()->id(),
                 ]);

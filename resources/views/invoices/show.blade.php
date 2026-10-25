@@ -287,10 +287,8 @@
             <div>
                 <label class="uk-form-label text-xs font-semibold text-foreground uppercase tracking-wider mb-1 block">Metode Pembayaran *</label>
                 <select name="metode" required class="uk-select text-xs">
-                    <option value="transfer">Transfer Bank (BCA/Mandiri/BRI)</option>
-                    <option value="tunai">Tunai / Kas Langsung</option>
-                    <option value="giro">Bilyet Giro</option>
-                    <option value="qris">QRIS</option>
+                    <option value="transfer">Transfer Bank BCA</option>
+                    <option value="tunai">Cash</option>
                 </select>
             </div>
 

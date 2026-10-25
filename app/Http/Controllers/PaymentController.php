@@ -89,9 +89,13 @@ class PaymentController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'tanggal' => 'required|date',
             'jumlah' => 'required|numeric|min:1',
-            'metode' => 'required|string|in:transfer,tunai,giro,qris',
+            'metode' => 'required|string|in:transfer,tunai,cash,giro,qris',
             'catatan' => 'nullable|string|max:500',
         ]);
+
+        if ($validated['metode'] === 'cash') {
+            $validated['metode'] = 'tunai';
+        }
 
         $customer = Customer::findOrFail($validated['customer_id']);
 
@@ -182,9 +186,13 @@ class PaymentController extends Controller
         $validated = $request->validate([
             'tanggal' => 'required|date',
             'jumlah' => 'required|numeric|min:1',
-            'metode' => 'required|string|in:transfer,tunai,giro,qris',
+            'metode' => 'required|string|in:transfer,tunai,cash,giro,qris',
             'catatan' => 'nullable|string|max:500',
         ]);
+
+        if ($validated['metode'] === 'cash') {
+            $validated['metode'] = 'tunai';
+        }
 
         if ($invoice->sisa_piutang <= 0) {
             return redirect()->back()->with('error', 'Nota ini sudah lunas.');

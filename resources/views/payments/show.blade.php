@@ -82,7 +82,7 @@
                 <div class="flex justify-between items-center">
                     <span class="text-muted-foreground">Metode Pembayaran:</span>
                     <span class="badge-metode-{{ $payment->metode ?? 'transfer' }}">
-                        {{ $payment->metode }}
+                        {{ $payment->metode === 'transfer' ? 'Transfer Bank BCA' : ($payment->metode === 'tunai' || $payment->metode === 'cash' ? 'Cash' : ucfirst($payment->metode)) }}
                     </span>
                 </div>
                 <div class="flex justify-between">

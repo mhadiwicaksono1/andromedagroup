@@ -88,10 +88,8 @@
                         Metode Pembayaran *
                     </label>
                     <select name="metode" required class="uk-select text-xs">
-                        <option value="transfer">Transfer Bank (BCA / Mandiri / dll)</option>
-                        <option value="tunai">Tunai (Cash di Kasir)</option>
-                        <option value="giro">Bilyet Giro (BG)</option>
-                        <option value="qris">QRIS / E-Wallet</option>
+                        <option value="transfer">Transfer Bank BCA</option>
+                        <option value="tunai">Cash</option>
                     </select>
                 </div>
 
