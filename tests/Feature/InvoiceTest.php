@@ -387,4 +387,34 @@ class InvoiceTest extends TestCase
         $worksheet->refresh();
         $this->assertEquals('selesai', $worksheet->status);
     }
+
+    public function test_invoice_index_shows_bayar_piutang_button_for_unpaid_invoices(): void
+    {
+        $user = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $customer = Customer::create([
+            'kode_customer' => 'CUST-UNPAID',
+            'nama' => 'Customer Unpaid',
+            'status' => 'active',
+        ]);
+
+        $invoice = Invoice::create([
+            'nomor_nota' => 'AMG/CB/5555',
+            'tanggal' => now(),
+            'customer_id' => $customer->id,
+            'tipe_nota' => 'pecahan',
+            'subtotal_lembar_kerja' => 100000,
+            'biaya_adm' => 3000,
+            'total_nota' => 103000,
+            'total_tagihan_kumulatif' => 103000,
+            'jumlah_dibayar' => 0,
+            'sisa_piutang' => 103000,
+            'status_pembayaran' => 'belum_lunas',
+            'user_id' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('invoices.index'));
+        $response->assertStatus(200);
+        $response->assertSee('Bayar Piutang');
+        $response->assertSee(route('payments.create', ['customer_id' => $customer->id, 'invoice_id' => $invoice->id]));
+    }
 }

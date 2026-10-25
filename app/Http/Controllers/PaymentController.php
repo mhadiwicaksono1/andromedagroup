@@ -76,11 +76,24 @@ class PaymentController extends Controller
     public function create(Request $request)
     {
         $selectedCustomerId = $request->input('customer_id');
+        $selectedInvoiceId = $request->input('invoice_id');
+        $initialAmount = null;
+
+        if ($selectedInvoiceId) {
+            $invoice = Invoice::find($selectedInvoiceId);
+            if ($invoice) {
+                $initialAmount = $invoice->sisa_piutang > 0 ? (float) $invoice->sisa_piutang : null;
+                if (!$selectedCustomerId) {
+                    $selectedCustomerId = $invoice->customer_id;
+                }
+            }
+        }
+
         $customers = Customer::where('status', 'active')->orderBy('nama')->get();
         $nextNumber = Payment::generateNumber();
         $today = now()->format('Y-m-d');
 
-        return view('payments.create', compact('customers', 'selectedCustomerId', 'nextNumber', 'today'));
+        return view('payments.create', compact('customers', 'selectedCustomerId', 'nextNumber', 'today', 'initialAmount'));
     }
 
     public function store(Request $request)

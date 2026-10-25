@@ -79,6 +79,7 @@
                         Jumlah Pembayaran (Rp) *
                     </label>
                     <input type="number" step="any" min="1" name="jumlah" id="input_jumlah" required placeholder="0"
+                           value="{{ old('jumlah', $initialAmount ?? '') }}"
                            class="uk-input text-sm font-mono font-bold text-emerald-600 dark:text-emerald-400" oninput="calculateAllocation()">
                     <span class="text-[10px] text-muted-foreground mt-1 block">Input nominal uang yang ditransfer atau dibayar customer.</span>
                 </div>
