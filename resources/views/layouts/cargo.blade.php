@@ -98,6 +98,16 @@
         .uk-input, .uk-select, .uk-textarea {
             font-size: 0.8125rem !important;
         }
+        /* Hilangkan panah spinner atas-bawah pada input type number */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none !important;
+            margin: 0 !important;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield !important;
+            appearance: textfield !important;
+        }
         /* Compact badge styling */
         .uk-badge {
             font-size: 0.675rem !important;

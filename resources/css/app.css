@@ -43,6 +43,17 @@ body {
     font-size: 0.925rem;
 }
 
+/* Hilangkan panah spinner atas-bawah pada input type number */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+}
+input[type="number"] {
+    -moz-appearance: textfield !important;
+    appearance: textfield !important;
+}
+
 /* Universal Button Styling (Franken UI & Tailwind) */
 .uk-btn,
 .uk-button {
