@@ -181,7 +181,7 @@
                 </div>
                 @if($invoice->biaya_adm > 0)
                     <div class="flex justify-between text-teal-600 dark:text-teal-400 font-medium">
-                        <span>+ Biaya ADM ({{ count($invoice->worksheetItems) }} SMU @ Rp 3.000):</span>
+                        <span>+ Biaya ADM ({{ $invoice->tipe_nota === 'pernama' ? '1 Nota' : count($invoice->worksheetItems) . ' SMU @ Rp 3.000' }}):</span>
                         <span class="font-mono font-bold">Rp {{ number_format($invoice->biaya_adm, 0, ',', '.') }}</span>
                     </div>
                 @endif

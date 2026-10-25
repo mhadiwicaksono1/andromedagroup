@@ -143,7 +143,7 @@
                         </div>
                         <input type="number" step="any" min="0" name="biaya_adm" id="input_biaya_adm" value="0" placeholder="0"
                                class="uk-input text-xs font-mono font-bold text-teal-600 dark:text-teal-400">
-                        <span class="text-[10px] text-muted-foreground mt-1 block">Otomatis dihitung Rp 3.000 per baris SMU terpilih (dapat disesuaikan jika perlu).</span>
+                        <span class="text-[10px] text-muted-foreground mt-1 block" id="help-biaya-adm">Otomatis dihitung Rp 3.000 (dapat disesuaikan jika perlu).</span>
                     </div>
 
                     <div>
@@ -377,10 +377,23 @@
             const checkboxes = document.querySelectorAll('.ws-checkbox:checked');
             const smuCount = checkboxes.length;
 
-            // Auto calculate Biaya Administrasi (ADM): Rp 3.000 / SMU
+            // Auto suggest Tipe Nota: if > 1 -> Pernama, if 1 -> Pecahan
+            if (selectTipeNota && !selectTipeNota.dataset.manual) {
+                if (smuCount > 1) {
+                    selectTipeNota.value = 'pernama';
+                } else if (smuCount === 1) {
+                    selectTipeNota.value = 'pecahan';
+                }
+            }
+
+            const currentTipeNota = selectTipeNota ? selectTipeNota.value : (smuCount > 1 ? 'pernama' : 'pecahan');
+
+            // Auto calculate Biaya Administrasi (ADM):
+            // Nota Pernama: 1x ADM (Rp 3.000) untuk seluruh SMU
+            // Nota Pecahan: Rp 3.000 x jumlah SMU
             let biayaAdm = 0;
             if (smuCount > 0) {
-                const autoAdm = smuCount * 3000;
+                const autoAdm = (currentTipeNota === 'pernama') ? 3000 : (smuCount * 3000);
                 if (!inputBiayaAdm.dataset.manual) {
                     inputBiayaAdm.value = autoAdm;
                     biayaAdm = autoAdm;
@@ -394,13 +407,16 @@
                 biayaAdm = parseFloat(inputBiayaAdm.value) || 0;
             }
 
-            // Auto suggest Tipe Nota: if > 1 -> Pernama, if 1 -> Pecahan
-            if (selectTipeNota && !selectTipeNota.dataset.manual) {
-                if (smuCount > 1) {
-                    selectTipeNota.value = 'pernama';
-                } else if (smuCount === 1) {
-                    selectTipeNota.value = 'pecahan';
-                }
+            // Update badge & helper info
+            const badgeAdmRate = document.getElementById('badge-adm-rate');
+            const helpAdm = document.getElementById('help-biaya-adm');
+            if (badgeAdmRate) {
+                badgeAdmRate.textContent = (currentTipeNota === 'pernama') ? 'Rp 3.000 (Tetap 1 Nota)' : 'Rp 3.000 / SMU';
+            }
+            if (helpAdm) {
+                helpAdm.textContent = (currentTipeNota === 'pernama')
+                    ? 'Otomatis dihitung Rp 3.000 tetap untuk 1 nota pernama (semua SMU). Dapat disesuaikan jika perlu.'
+                    : 'Otomatis dihitung Rp 3.000 per baris SMU terpilih (dapat disesuaikan jika perlu).';
             }
 
             let subtotalLK = 0;
@@ -462,6 +478,8 @@
         });
         selectTipeNota.addEventListener('change', function() {
             selectTipeNota.dataset.manual = 'true';
+            delete inputBiayaAdm.dataset.manual;
+            recalculate();
         });
 
         document.getElementById('btn-select-all')?.addEventListener('click', () => {

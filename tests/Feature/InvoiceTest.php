@@ -134,11 +134,85 @@ class InvoiceTest extends TestCase
         // Subtotal = 734.000 + 430.000 = 1.164.000
         $this->assertEquals(1164000, (float) $invoice->subtotal_lembar_kerja);
 
-        // Biaya ADM = 2 SMU * 3.000 = 6.000
+        // Biaya ADM untuk Pernama = 1x ADM (3.000) untuk seluruh SMU
+        $this->assertEquals(3000, (float) $invoice->biaya_adm);
+
+        // Total Nota = 1.164.000 + 3.000 = 1.167.000
+        $this->assertEquals(1167000, (float) $invoice->total_nota);
+    }
+
+    public function test_create_and_store_invoice_pecahan_multiplies_adm_by_smu_count(): void
+    {
+        $user = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $customer = Customer::create([
+            'kode_customer' => 'CUST-PECAHAN',
+            'nama' => 'Customer Pecahan',
+            'telepon' => '0812345678',
+            'kategori' => 'standar',
+            'tarif_default' => 2000,
+        ]);
+
+        $worksheet = Worksheet::create([
+            'nomor_lembar_kerja' => Worksheet::generateNumber(),
+            'nomor_smu' => '8801',
+            'origin' => 'lop',
+            'tanggal' => now(),
+            'status' => 'selesai',
+            'tipe' => 'pecahan',
+            'user_id' => $user->id,
+        ]);
+
+        $item1 = WorksheetItem::create([
+            'worksheet_id' => $worksheet->id,
+            'customer_id' => $customer->id,
+            'marking' => 'PC-1',
+            'origin' => 'lop',
+            'jumlah_koli' => 5,
+            'berat_kg' => 100,
+            'tarif_per_kg' => 2000,
+            'total_biaya' => 200000,
+            'status' => 'selesai',
+        ]);
+
+        $item2 = WorksheetItem::create([
+            'worksheet_id' => $worksheet->id,
+            'customer_id' => $customer->id,
+            'marking' => 'PC-2',
+            'origin' => 'lop',
+            'jumlah_koli' => 5,
+            'berat_kg' => 100,
+            'tarif_per_kg' => 2000,
+            'total_biaya' => 200000,
+            'status' => 'selesai',
+        ]);
+
+        $nomorNota = Invoice::generateNumber();
+
+        $response = $this->actingAs($user)->post(route('invoices.store'), [
+            'nomor_nota' => $nomorNota,
+            'tipe_nota' => 'pecahan',
+            'tanggal' => now()->toDateString(),
+            'customer_id' => $customer->id,
+            'worksheet_ids' => [$item1->id, $item2->id],
+            'sisa_hutang_sebelumnya' => 0,
+            'penyesuaian_biaya' => 0,
+            'jumlah_dibayar' => 0,
+        ]);
+
+        $response->assertRedirect();
+
+        $invoice = Invoice::where('nomor_nota', $nomorNota)->first();
+        $this->assertNotNull($invoice);
+        $this->assertEquals('pecahan', $invoice->tipe_nota);
+
+        // Subtotal = 200.000 + 200.000 = 400.000
+        $this->assertEquals(400000, (float) $invoice->subtotal_lembar_kerja);
+
+        // Biaya ADM untuk Pecahan = 2 SMU * 3.000 = 6.000
         $this->assertEquals(6000, (float) $invoice->biaya_adm);
 
-        // Total Nota = 1.164.000 + 6.000 = 1.170.000
-        $this->assertEquals(1170000, (float) $invoice->total_nota);
+        // Total Nota = 400.000 + 6.000 = 406.000
+        $this->assertEquals(406000, (float) $invoice->total_nota);
     }
 
     public function test_print_view_renders_exact_details_from_images(): void

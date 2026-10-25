@@ -100,9 +100,18 @@ class InvoiceController extends Controller
             $sisaHutangLama = (float) $request->sisa_hutang_sebelumnya;
             $penyesuaian = (float) ($request->penyesuaian_biaya ?? 0);
 
-            // Hitung Biaya Administrasi (ADM): Rp 3.000 per SMU/item kargo
+            // Tentukan tipe nota
             $countSmu = $items->count();
-            $biayaAdm = $request->filled('biaya_adm') ? (float) $request->biaya_adm : ($countSmu * 3000);
+            $tipeNota = $request->tipe_nota ?: ($countSmu > 1 ? 'pernama' : 'pecahan');
+
+            // Hitung Biaya Administrasi (ADM):
+            // Pernama: 1x ADM (Rp 3.000) untuk semua SMU
+            // Pecahan: Rp 3.000 x jumlah SMU
+            if ($request->filled('biaya_adm')) {
+                $biayaAdm = (float) $request->biaya_adm;
+            } else {
+                $biayaAdm = ($tipeNota === 'pernama') ? ($countSmu > 0 ? 3000 : 0) : ($countSmu * 3000);
+            }
 
             $totalNota = $subtotal + $biayaAdm + $penyesuaian;
             $totalTagihanKumulatif = $sisaHutangLama + $totalNota;
@@ -117,8 +126,6 @@ class InvoiceController extends Controller
             } else {
                 $statusPembayaran = 'belum_lunas';
             }
-
-            $tipeNota = $request->tipe_nota ?: ($items->count() > 1 ? 'pernama' : 'pecahan');
 
             $invoice = Invoice::create([
                 'nomor_nota' => $request->nomor_nota,
