@@ -231,4 +231,45 @@ class RolePermissionTest extends TestCase
         $this->actingAs($auditorUser)->get(route('reports.worksheets'))->assertStatus(200);
         $this->actingAs($auditorUser)->get(route('invoices.index'))->assertStatus(403);
     }
+
+    public function test_unchecking_customer_permission_hides_menu_and_blocks_access_for_operasional()
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $operasionalRole = Role::where('slug', 'operasional')->first();
+        $operasionalUser = User::factory()->create(['role' => 'operasional', 'role_id' => $operasionalRole->id, 'status' => 'active']);
+
+        $custPerm = Permission::where('slug', 'customers.view')->first();
+
+        // 1. Initial state: customer menu is visible and accessible
+        $this->actingAs($operasionalUser)->get(route('cargo.dashboard'))
+            ->assertStatus(200)
+            ->assertSee('Master Customer');
+        $this->actingAs($operasionalUser)->get(route('customers.index'))
+            ->assertStatus(200);
+
+        // 2. Uncheck / remove customers.view from operasional role
+        $remainingPermIds = $operasionalRole->permissions
+            ->where('slug', '!=', 'customers.view')
+            ->pluck('id')
+            ->toArray();
+
+        $this->actingAs($admin)->put(route('roles.update', $operasionalRole->id), [
+            'name' => $operasionalRole->name,
+            'permissions' => $remainingPermIds,
+        ])->assertRedirect(route('roles.index'));
+
+        // 3. Verify customer menu is hidden and route is blocked (403)
+        $operasionalRole->refresh();
+        $this->assertFalse($operasionalRole->hasPermission('customers.view'));
+
+        $operasionalUser->refresh();
+        $operasionalUser->unsetRelation('roleModel');
+
+        $this->actingAs($operasionalUser)->get(route('cargo.dashboard'))
+            ->assertStatus(200)
+            ->assertDontSee('Master Customer');
+
+        $this->actingAs($operasionalUser)->get(route('customers.index'))
+            ->assertStatus(403);
+    }
 }

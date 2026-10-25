@@ -24,15 +24,26 @@ Route::middleware(['auth'])->group(function () {
 
     // Tahap 2: Master Customer
     Route::prefix('customers')->name('customers.')->group(function () {
-        Route::get('/', [CustomerController::class, 'index'])->name('index');
-        Route::get('/create', [CustomerController::class, 'create'])->name('create');
-        Route::post('/', [CustomerController::class, 'store'])->name('store');
-        Route::get('/{customer}', [CustomerController::class, 'show'])->name('show');
-        Route::get('/{customer}/edit', [CustomerController::class, 'edit'])->name('edit');
-        Route::put('/{customer}', [CustomerController::class, 'update'])->name('update');
-        Route::get('/{customer}/statement', [CustomerController::class, 'statement'])->name('statement');
-        Route::patch('/{customer}/toggle-status', [CustomerController::class, 'toggleStatus'])->name('toggleStatus');
-        Route::delete('/{customer}', [CustomerController::class, 'destroy'])->name('destroy');
+        Route::middleware(['permission:customers.create'])->group(function () {
+            Route::get('/create', [CustomerController::class, 'create'])->name('create');
+            Route::post('/', [CustomerController::class, 'store'])->name('store');
+        });
+
+        Route::middleware(['permission:customers.view'])->group(function () {
+            Route::get('/', [CustomerController::class, 'index'])->name('index');
+            Route::get('/{customer}', [CustomerController::class, 'show'])->name('show');
+            Route::get('/{customer}/statement', [CustomerController::class, 'statement'])->name('statement');
+        });
+
+        Route::middleware(['permission:customers.edit'])->group(function () {
+            Route::get('/{customer}/edit', [CustomerController::class, 'edit'])->name('edit');
+            Route::put('/{customer}', [CustomerController::class, 'update'])->name('update');
+            Route::patch('/{customer}/toggle-status', [CustomerController::class, 'toggleStatus'])->name('toggleStatus');
+        });
+
+        Route::middleware(['permission:customers.delete'])->group(function () {
+            Route::delete('/{customer}', [CustomerController::class, 'destroy'])->name('destroy');
+        });
     });
 
     // API endpoint for dynamic Invoice creation & Payment allocation (fetch debt & unbilled worksheets)
@@ -40,15 +51,16 @@ Route::middleware(['auth'])->group(function () {
 
     // Tahap 3: Lembar Kerja (Job Order SMU)
     Route::prefix('worksheets')->name('worksheets.')->group(function () {
-        Route::get('/', [WorksheetController::class, 'index'])->name('index');
-
         // Tindakan operasional kargo (Create & Store) - Berbasis Izin Dinamis
         Route::middleware(['permission:worksheets.create'])->group(function () {
             Route::get('/create', [WorksheetController::class, 'create'])->name('create');
             Route::post('/', [WorksheetController::class, 'store'])->name('store');
         });
 
-        Route::get('/{worksheet}', [WorksheetController::class, 'show'])->name('show');
+        Route::middleware(['permission:worksheets.view'])->group(function () {
+            Route::get('/', [WorksheetController::class, 'index'])->name('index');
+            Route::get('/{worksheet}', [WorksheetController::class, 'show'])->name('show');
+        });
 
         // Tindakan edit, update status, dan hapus lembar kerja - Berbasis Izin Dinamis
         Route::middleware(['permission:worksheets.edit,worksheets.status,worksheets.delete'])->group(function () {

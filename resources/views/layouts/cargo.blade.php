@@ -434,6 +434,7 @@
                         <span>Dashboard</span>
                     </a>
 
+                    @if(auth()->user()->hasPermission('customers.view'))
                     <!-- Master Customer -->
                     <a href="{{ route('customers.index') }}" 
                        class="flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-md transition-colors {{ request()->routeIs('customers.*') ? 'bg-secondary text-secondary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground hover:bg-muted/70' }}">
@@ -442,7 +443,9 @@
                         </svg>
                         <span>Master Customer</span>
                     </a>
+                    @endif
 
+                    @if(auth()->user()->hasPermission('worksheets.view'))
                     <!-- Lembar Kerja (SMU) -->
                     <a href="{{ route('worksheets.index') }}" 
                        class="flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-md transition-colors {{ request()->routeIs('worksheets.*') ? 'bg-secondary text-secondary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground hover:bg-muted/70' }}">
@@ -451,6 +454,7 @@
                         </svg>
                         <span>Lembar Kerja (SMU)</span>
                     </a>
+                    @endif
 
                     @if(auth()->user()->hasPermission('invoices.view'))
                     <!-- Nota & Piutang -->
