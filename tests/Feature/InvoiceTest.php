@@ -280,8 +280,8 @@ class InvoiceTest extends TestCase
         $response->assertSee('lop');
         $response->assertSee('4 KOLI');
         $response->assertSee('102');
-        $response->assertSee('Rp 215.000');
-        $response->assertSee('JUMLAH ADM');
+        $response->assertSee('JUMLAH');
+        $response->assertDontSee('JUMLAH ADM');
         $response->assertSee('Rp 3.000');
         $response->assertSee('Rp 218.000');
         $response->assertSee('BCA 7195091927 An ABDUL SATAR');

@@ -235,11 +235,9 @@
                 @if($invoice->biaya_adm > 0)
                     <tr style="background-color: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
                         <td colspan="3" class="font-bold text-slate-700" style="padding: 7px 10px;">
-                            JUMLAH ADM
+                            JUMLAH
                         </td>
-                        <td class="text-center font-mono font-bold" style="padding: 7px 10px;">
-                            {{ $invoice->worksheetItems->count() }}
-                        </td>
+                        <td class="text-center font-mono font-bold" style="padding: 7px 10px;"></td>
                         <td class="text-center font-mono font-bold" style="padding: 7px 10px;">
                             {{ number_format($invoice->worksheetItems->sum('jumlah_koli'), 0, ',', '.') }} KOLI
                         </td>
