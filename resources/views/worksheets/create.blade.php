@@ -109,8 +109,9 @@
                             <span>Koli SMU *</span>
                             <span class="text-[10px] text-muted-foreground font-normal">Fisik Master</span>
                         </label>
-                        <input type="number" name="koli_smu" id="header_koli_smu" value="{{ old('koli_smu') }}" min="1" placeholder="Contoh: 10"
+                        <input type="number" name="koli_smu" id="header_koli_smu" value="{{ old('koli_smu') }}" min="1" required placeholder="Contoh: 10"
                                class="uk-input text-xs font-mono font-semibold @error('koli_smu') border-destructive @enderror">
+                        <div id="feedback_koli_smu"></div>
                         @error('koli_smu')
                             <p class="text-xs text-destructive mt-1">{{ $message }}</p>
                         @enderror
@@ -121,8 +122,9 @@
                             <span>Kilo SMU (kg) *</span>
                             <span class="text-[10px] text-muted-foreground font-normal">Berat Master</span>
                         </label>
-                        <input type="number" step="0.01" name="berat_smu" id="header_berat_smu" value="{{ old('berat_smu') }}" min="0.01" placeholder="Contoh: 150.00"
+                        <input type="number" step="0.01" name="berat_smu" id="header_berat_smu" value="{{ old('berat_smu') }}" min="0.01" required placeholder="Contoh: 150.00"
                                class="uk-input text-xs font-mono font-semibold @error('berat_smu') border-destructive @enderror">
+                        <div id="feedback_berat_smu"></div>
                         @error('berat_smu')
                             <p class="text-xs text-destructive mt-1">{{ $message }}</p>
                         @enderror
@@ -387,8 +389,10 @@
 
         const headerKoli = document.getElementById('header_koli_smu');
         const headerBerat = document.getElementById('header_berat_smu');
+        const feedbackKoli = document.getElementById('feedback_koli_smu');
+        const feedbackBerat = document.getElementById('feedback_berat_smu');
 
-        // Jika mode pernama, sync dua arah
+        // Jika mode pernama dan header belum terisi, sync dari row pertama
         if (currentTipe === 'pernama') {
             const firstRowKoli = document.querySelector('.item-row .item-koli');
             const firstRowBerat = document.querySelector('.item-row .item-berat');
@@ -398,19 +402,41 @@
             if (headerBerat && firstRowBerat && !headerBerat.value && firstRowBerat.value) {
                 headerBerat.value = firstRowBerat.value;
             }
-        } else {
-            // Jika mode pecahan dan header belum diisi secara manual, isi otomatis dengan jumlah total
-            if (headerKoli && (!headerKoli.value || headerKoli.dataset.autoFilled === 'true')) {
-                if (totalKoli > 0) {
-                    headerKoli.value = totalKoli;
-                    headerKoli.dataset.autoFilled = 'true';
+        }
+
+        // Live validation feedback pada header SMU
+        if (headerKoli && feedbackKoli) {
+            const smuKoliVal = parseInt(headerKoli.value);
+            if (!isNaN(smuKoliVal)) {
+                if (smuKoliVal !== totalKoli) {
+                    feedbackKoli.innerHTML = `<span class="text-[10px] text-destructive font-semibold block mt-1">⚠️ Total detail: ${totalKoli} koli (tidak sesuai SMU: ${smuKoliVal})</span>`;
+                    headerKoli.classList.add('border-destructive');
+                } else {
+                    feedbackKoli.innerHTML = `<span class="text-[10px] text-emerald-600 font-semibold block mt-1">✓ Sesuai detail: ${totalKoli} koli</span>`;
+                    headerKoli.classList.remove('border-destructive');
                 }
+            } else {
+                feedbackKoli.innerHTML = `<span class="text-[10px] text-muted-foreground block mt-1">Total koli detail: ${totalKoli} koli</span>`;
+                headerKoli.classList.remove('border-destructive');
             }
-            if (headerBerat && (!headerBerat.value || headerBerat.dataset.autoFilled === 'true')) {
-                if (totalBerat > 0) {
-                    headerBerat.value = totalBerat.toFixed(2);
-                    headerBerat.dataset.autoFilled = 'true';
+        }
+
+        if (headerBerat && feedbackBerat) {
+            const smuBeratVal = parseFloat(headerBerat.value);
+            if (!isNaN(smuBeratVal)) {
+                if (totalBerat < smuBeratVal) {
+                    feedbackBerat.innerHTML = `<span class="text-[10px] text-destructive font-semibold block mt-1">⚠️ Berat detail (${totalBerat.toFixed(2)} kg) lebih kecil dari SMU (${smuBeratVal.toFixed(2)} kg)</span>`;
+                    headerBerat.classList.add('border-destructive');
+                } else if (totalBerat > smuBeratVal) {
+                    feedbackBerat.innerHTML = `<span class="text-[10px] text-blue-600 font-semibold block mt-1">✓ Berat detail (${totalBerat.toFixed(2)} kg) melebihi SMU (${smuBeratVal.toFixed(2)} kg) — diperbolehkan</span>`;
+                    headerBerat.classList.remove('border-destructive');
+                } else {
+                    feedbackBerat.innerHTML = `<span class="text-[10px] text-emerald-600 font-semibold block mt-1">✓ Sesuai SMU: ${totalBerat.toFixed(2)} kg</span>`;
+                    headerBerat.classList.remove('border-destructive');
                 }
+            } else {
+                feedbackBerat.innerHTML = `<span class="text-[10px] text-muted-foreground block mt-1">Total berat detail: ${totalBerat.toFixed(2)} kg</span>`;
+                headerBerat.classList.remove('border-destructive');
             }
         }
 
@@ -562,13 +588,12 @@
         const alertList = document.getElementById('client-validation-list');
 
         function showErrorAlert(messages) {
-            if (!alertBox || !alertList) {
-                alert(messages.join('\n'));
-                return;
+            if (alertBox && alertList) {
+                alertList.innerHTML = messages.map(m => `<li>${m}</li>`).join('');
+                alertBox.classList.remove('hidden');
+                alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-            alertList.innerHTML = messages.map(m => `<li>${m}</li>`).join('');
-            alertBox.classList.remove('hidden');
-            alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            alert(messages.join('\n'));
         }
 
         form?.addEventListener('submit', function (e) {
@@ -591,6 +616,9 @@
                 errors.push('Tipe Pernama hanya boleh berisi tepat 1 baris pelanggan.');
             }
 
+            let totalKoliDetail = 0;
+            let totalBeratDetail = 0;
+
             rows.forEach((row, idx) => {
                 const custSelect = row.querySelector('.item-customer');
                 const koliInput = row.querySelector('.item-koli');
@@ -604,18 +632,22 @@
                     $(row).find('.select2-selection').removeClass('!border-destructive');
                 }
 
-                if (!koliInput || !koliInput.value || parseInt(koliInput.value) < 1) {
+                const koliVal = parseInt(koliInput?.value);
+                if (!koliInput || isNaN(koliVal) || koliVal < 1) {
                     errors.push(`Baris ${idx + 1}: Koli kargo minimal 1.`);
                     koliInput?.classList.add('border-destructive');
                 } else {
                     koliInput?.classList.remove('border-destructive');
+                    totalKoliDetail += koliVal;
                 }
 
-                if (!beratInput || !beratInput.value || parseFloat(beratInput.value) <= 0) {
+                const beratVal = parseFloat(beratInput?.value);
+                if (!beratInput || isNaN(beratVal) || beratVal <= 0) {
                     errors.push(`Baris ${idx + 1}: Berat kargo (kg) harus lebih dari 0.`);
                     beratInput?.classList.add('border-destructive');
                 } else {
                     beratInput?.classList.remove('border-destructive');
+                    totalBeratDetail += beratVal;
                 }
 
                 if (!tarifInput || tarifInput.value === '' || parseFloat(tarifInput.value) < 0) {
@@ -625,6 +657,32 @@
                     tarifInput?.classList.remove('border-destructive');
                 }
             });
+
+            // Kondisi 1: Koli Header SMU vs Detail (harus sama persis)
+            const koliSmuInput = document.getElementById('header_koli_smu');
+            const koliSmuVal = parseInt(koliSmuInput?.value);
+            if (!koliSmuInput || isNaN(koliSmuVal) || koliSmuVal < 1) {
+                errors.push('Koli SMU wajib diisi.');
+                koliSmuInput?.classList.add('border-destructive');
+            } else if (koliSmuVal !== totalKoliDetail) {
+                errors.push(`Jumlah koli pada SMU dan detail tidak sesuai (SMU: ${koliSmuVal} koli, Detail: ${totalKoliDetail} koli).`);
+                koliSmuInput?.classList.add('border-destructive');
+            } else {
+                koliSmuInput?.classList.remove('border-destructive');
+            }
+
+            // Kondisi 2: Berat (kg) Header SMU vs Detail (detail >= SMU boleh lanjut, detail < SMU tidak boleh)
+            const beratSmuInput = document.getElementById('header_berat_smu');
+            const beratSmuVal = parseFloat(beratSmuInput?.value);
+            if (!beratSmuInput || isNaN(beratSmuVal) || beratSmuVal <= 0) {
+                errors.push('Kilo SMU (kg) wajib diisi.');
+                beratSmuInput?.classList.add('border-destructive');
+            } else if (totalBeratDetail < beratSmuVal) {
+                errors.push(`Total berat (kg) pada detail (${totalBeratDetail.toFixed(2)} kg) tidak boleh lebih kecil dari berat SMU (${beratSmuVal.toFixed(2)} kg).`);
+                beratSmuInput?.classList.add('border-destructive');
+            } else {
+                beratSmuInput?.classList.remove('border-destructive');
+            }
 
             if (errors.length > 0) {
                 e.preventDefault();

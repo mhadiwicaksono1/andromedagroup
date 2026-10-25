@@ -101,6 +101,32 @@ class WorksheetController extends Controller
             'items.*.tarif_per_kg.required' => 'Tarif per kg wajib diisi.',
         ]);
 
+        // Validasi Kondisi 1 & 2:
+        // 1. Koli SMU dan total koli detail harus sama
+        // 2. Total kg detail boleh lebih atau sama dengan kg SMU, tapi TIDAK boleh lebih kecil
+        $totalKoliDetail = (int) collect($validated['items'])->sum('jumlah_koli');
+        $totalKgDetail = (float) collect($validated['items'])->sum('berat_kg');
+
+        $koliSmu = isset($validated['koli_smu']) && $validated['koli_smu'] !== null ? (int) $validated['koli_smu'] : null;
+        $beratSmu = isset($validated['berat_smu']) && $validated['berat_smu'] !== null ? (float) $validated['berat_smu'] : null;
+
+        $customErrors = [];
+
+        if ($koliSmu !== null && $koliSmu !== $totalKoliDetail) {
+            $customErrors['koli_smu'] = 'Jumlah koli pada SMU dan detail tidak sesuai.';
+        }
+
+        if ($beratSmu !== null && $totalKgDetail < $beratSmu) {
+            $customErrors['berat_smu'] = 'Total berat (kg) pada detail tidak boleh lebih kecil dari berat SMU.';
+        }
+
+        if (!empty($customErrors)) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors($customErrors)
+                ->with('error', reset($customErrors));
+        }
+
         try {
             return DB::transaction(function () use ($validated) {
                 $worksheet = Worksheet::create([
@@ -211,6 +237,32 @@ class WorksheetController extends Controller
             'items.*.berat_kg.min' => 'Berat (kg) minimal 0.01 kg.',
             'items.*.tarif_per_kg.required' => 'Tarif per kg wajib diisi.',
         ]);
+
+        // Validasi Kondisi 1 & 2:
+        // 1. Koli SMU dan total koli detail harus sama
+        // 2. Total kg detail boleh lebih atau sama dengan kg SMU, tapi TIDAK boleh lebih kecil
+        $totalKoliDetail = (int) collect($validated['items'])->sum('jumlah_koli');
+        $totalKgDetail = (float) collect($validated['items'])->sum('berat_kg');
+
+        $koliSmu = isset($validated['koli_smu']) && $validated['koli_smu'] !== null ? (int) $validated['koli_smu'] : null;
+        $beratSmu = isset($validated['berat_smu']) && $validated['berat_smu'] !== null ? (float) $validated['berat_smu'] : null;
+
+        $customErrors = [];
+
+        if ($koliSmu !== null && $koliSmu !== $totalKoliDetail) {
+            $customErrors['koli_smu'] = 'Jumlah koli pada SMU dan detail tidak sesuai.';
+        }
+
+        if ($beratSmu !== null && $totalKgDetail < $beratSmu) {
+            $customErrors['berat_smu'] = 'Total berat (kg) pada detail tidak boleh lebih kecil dari berat SMU.';
+        }
+
+        if (!empty($customErrors)) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors($customErrors)
+                ->with('error', reset($customErrors));
+        }
 
         try {
             return DB::transaction(function () use ($validated, $worksheet) {

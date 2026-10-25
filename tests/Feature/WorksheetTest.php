@@ -238,5 +238,115 @@ class WorksheetTest extends TestCase
         $response->assertSee('readonly', false);
         $response->assertDontSee('quick-tarif-pills', false);
     }
+
+    public function test_store_worksheet_fails_when_koli_smu_does_not_match_detail_koli(): void
+    {
+        $user = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $customer = Customer::create([
+            'kode_customer' => 'CUST-KOLI-FAIL',
+            'nama' => 'Customer Koli Test',
+            'kategori' => 'standar',
+            'tarif_default' => 2100,
+            'status' => 'active',
+        ]);
+
+        $payload = [
+            'nomor_lembar_kerja' => 'LK-202610-KOLI-ERR',
+            'tanggal' => '2026-10-23',
+            'nomor_smu' => 'GA-112233',
+            'koli_smu' => 20, // SMU says 20
+            'berat_smu' => 100.0,
+            'origin' => 'lop',
+            'tipe' => 'pecahan',
+            'status' => 'selesai',
+            'items' => [
+                [
+                    'customer_id' => $customer->id,
+                    'jumlah_koli' => 15, // Detail is only 15 -> Mismatch!
+                    'berat_kg' => 100.0,
+                    'tarif_per_kg' => 2100,
+                ],
+            ],
+        ];
+
+        $response = $this->actingAs($user)->post(route('worksheets.store'), $payload);
+
+        $response->assertSessionHasErrors(['koli_smu' => 'Jumlah koli pada SMU dan detail tidak sesuai.']);
+        $this->assertDatabaseMissing('worksheets', ['nomor_lembar_kerja' => 'LK-202610-KOLI-ERR']);
+    }
+
+    public function test_store_worksheet_fails_when_detail_kg_is_less_than_berat_smu(): void
+    {
+        $user = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $customer = Customer::create([
+            'kode_customer' => 'CUST-KG-FAIL',
+            'nama' => 'Customer KG Test',
+            'kategori' => 'standar',
+            'tarif_default' => 2100,
+            'status' => 'active',
+        ]);
+
+        $payload = [
+            'nomor_lembar_kerja' => 'LK-202610-KG-ERR',
+            'tanggal' => '2026-10-23',
+            'nomor_smu' => 'GA-445566',
+            'koli_smu' => 10,
+            'berat_smu' => 150.0, // SMU says 150 kg
+            'origin' => 'lop',
+            'tipe' => 'pecahan',
+            'status' => 'selesai',
+            'items' => [
+                [
+                    'customer_id' => $customer->id,
+                    'jumlah_koli' => 10,
+                    'berat_kg' => 120.0, // Detail is 120 kg < 150 kg -> Error!
+                    'tarif_per_kg' => 2100,
+                ],
+            ],
+        ];
+
+        $response = $this->actingAs($user)->post(route('worksheets.store'), $payload);
+
+        $response->assertSessionHasErrors(['berat_smu' => 'Total berat (kg) pada detail tidak boleh lebih kecil dari berat SMU.']);
+        $this->assertDatabaseMissing('worksheets', ['nomor_lembar_kerja' => 'LK-202610-KG-ERR']);
+    }
+
+    public function test_store_worksheet_succeeds_when_detail_kg_is_greater_than_or_equal_to_berat_smu_and_koli_matches(): void
+    {
+        $user = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $customer = Customer::create([
+            'kode_customer' => 'CUST-KG-OK',
+            'nama' => 'Customer KG OK',
+            'kategori' => 'standar',
+            'tarif_default' => 2100,
+            'status' => 'active',
+        ]);
+
+        // Detail kg (180 kg) > SMU kg (150 kg) is explicitly permitted!
+        $payload = [
+            'nomor_lembar_kerja' => 'LK-202610-KG-OK',
+            'tanggal' => '2026-10-23',
+            'nomor_smu' => 'GA-778899',
+            'koli_smu' => 10,
+            'berat_smu' => 150.0,
+            'origin' => 'lop',
+            'tipe' => 'pecahan',
+            'status' => 'selesai',
+            'items' => [
+                [
+                    'customer_id' => $customer->id,
+                    'jumlah_koli' => 10,
+                    'berat_kg' => 180.0, // Allowed!
+                    'tarif_per_kg' => 2100,
+                ],
+            ],
+        ];
+
+        $response = $this->actingAs($user)->post(route('worksheets.store'), $payload);
+
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('worksheets', ['nomor_lembar_kerja' => 'LK-202610-KG-OK']);
+    }
 }
+
 
