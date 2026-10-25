@@ -170,13 +170,7 @@
                 </td>
                 <td style="width: 45%;" class="text-right">
                     <h2 style="margin: 0; font-size: 18px; color: #0f172a; font-weight: 800; letter-spacing: 0.04em;">
-                        @if(($invoice->tipe_nota ?? '') === 'pecahan')
-                            NOTA PECAHAN
-                        @elseif(($invoice->tipe_nota ?? '') === 'pernama')
-                            NOTA PERNAMA
-                        @else
-                            NOTA PENAGIHAN
-                        @endif
+                        NOTA
                     </h2>
                     <p class="font-mono font-bold" style="margin: 4px 0; font-size: 13px; color: #0284c7;">
                         {{ $invoice->nomor_nota }}

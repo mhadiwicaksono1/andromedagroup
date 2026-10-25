@@ -271,7 +271,9 @@ class InvoiceTest extends TestCase
         $response = $this->actingAs($user)->get(route('invoices.print', $invoice));
 
         $response->assertStatus(200);
-        $response->assertSee('NOTA PECAHAN');
+        $response->assertSee('NOTA');
+        $response->assertDontSee('NOTA PECAHAN');
+        $response->assertDontSee('NOTA PERNAMA');
         $response->assertSee('AMG/CB/001');
         $response->assertSee('DENI');
         $response->assertSee('7411');
