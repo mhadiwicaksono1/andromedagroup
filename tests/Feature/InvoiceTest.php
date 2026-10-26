@@ -134,14 +134,14 @@ class InvoiceTest extends TestCase
         // Subtotal = 734.000 + 430.000 = 1.164.000
         $this->assertEquals(1164000, (float) $invoice->subtotal_lembar_kerja);
 
-        // Biaya ADM untuk Pernama = 1x ADM (3.000) untuk seluruh SMU
-        $this->assertEquals(3000, (float) $invoice->biaya_adm);
+        // Biaya ADM untuk Pernama = jumlah SMU x 3.000 = 2 x 3.000 = 6.000
+        $this->assertEquals(6000, (float) $invoice->biaya_adm);
 
-        // Total Nota = 1.164.000 + 3.000 = 1.167.000
-        $this->assertEquals(1167000, (float) $invoice->total_nota);
+        // Total Nota = 1.164.000 + 6.000 = 1.170.000
+        $this->assertEquals(1170000, (float) $invoice->total_nota);
     }
 
-    public function test_create_and_store_invoice_pecahan_multiplies_adm_by_smu_count(): void
+    public function test_create_and_store_invoice_pecahan_uses_flat_adm(): void
     {
         $user = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $customer = Customer::create([
@@ -208,11 +208,11 @@ class InvoiceTest extends TestCase
         // Subtotal = 200.000 + 200.000 = 400.000
         $this->assertEquals(400000, (float) $invoice->subtotal_lembar_kerja);
 
-        // Biaya ADM untuk Pecahan = 2 SMU * 3.000 = 6.000
-        $this->assertEquals(6000, (float) $invoice->biaya_adm);
+        // Biaya ADM untuk Pecahan = Tetap Rp 3.000 (1 x Rp 3.000 berapapun LK)
+        $this->assertEquals(3000, (float) $invoice->biaya_adm);
 
-        // Total Nota = 400.000 + 6.000 = 406.000
-        $this->assertEquals(406000, (float) $invoice->total_nota);
+        // Total Nota = 400.000 + 3.000 = 403.000
+        $this->assertEquals(403000, (float) $invoice->total_nota);
     }
 
     public function test_print_view_renders_exact_details_from_images(): void

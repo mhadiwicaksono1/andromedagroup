@@ -387,11 +387,11 @@
             const currentTipeNota = selectTipeNota ? selectTipeNota.value : (smuCount > 1 ? 'pernama' : 'pecahan');
 
             // Auto calculate Biaya Administrasi (ADM):
-            // Nota Pernama: 1x ADM (Rp 3.000) untuk seluruh SMU
-            // Nota Pecahan: Rp 3.000 x jumlah SMU
+            // Nota Pernama: (Jumlah LK / SMU) x Rp 3.000 (misal 4 LK -> 4 x 3.000 = 12.000)
+            // Nota Pecahan: Berapapun LK tetap dihitung 1x Rp 3.000
             let biayaAdm = 0;
             if (smuCount > 0) {
-                const autoAdm = (currentTipeNota === 'pernama') ? 3000 : (smuCount * 3000);
+                const autoAdm = (currentTipeNota === 'pernama') ? (smuCount * 3000) : 3000;
                 if (!inputBiayaAdm.dataset.manual) {
                     inputBiayaAdm.value = autoAdm;
                     biayaAdm = autoAdm;
@@ -409,12 +409,12 @@
             const badgeAdmRate = document.getElementById('badge-adm-rate');
             const helpAdm = document.getElementById('help-biaya-adm');
             if (badgeAdmRate) {
-                badgeAdmRate.textContent = (currentTipeNota === 'pernama') ? 'Rp 3.000 (Tetap 1 Nota)' : 'Rp 3.000 / SMU';
+                badgeAdmRate.textContent = (currentTipeNota === 'pernama') ? 'Rp 3.000 / SMU' : 'Rp 3.000 (Tetap 1 Nota)';
             }
             if (helpAdm) {
                 helpAdm.textContent = (currentTipeNota === 'pernama')
-                    ? 'Otomatis dihitung Rp 3.000 tetap untuk 1 nota pernama (semua SMU). Dapat disesuaikan jika perlu.'
-                    : 'Otomatis dihitung Rp 3.000 per baris SMU terpilih (dapat disesuaikan jika perlu).';
+                    ? `Otomatis dihitung Rp 3.000 per SMU / LK (${smuCount} LK x Rp 3.000 = Rp ${(smuCount * 3000).toLocaleString('id-ID')}).`
+                    : 'Otomatis dihitung Rp 3.000 tetap untuk nota pecahan (berapapun LK tetap 1x Rp 3.000).';
             }
 
             let subtotalLK = 0;

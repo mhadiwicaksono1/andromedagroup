@@ -105,12 +105,12 @@ class InvoiceController extends Controller
             $tipeNota = $request->tipe_nota ?: ($countSmu > 1 ? 'pernama' : 'pecahan');
 
             // Hitung Biaya Administrasi (ADM):
-            // Pernama: 1x ADM (Rp 3.000) untuk semua SMU
-            // Pecahan: Rp 3.000 x jumlah SMU
+            // Pernama: (Jumlah LK / SMU) x Rp 3.000 (misal 4 LK -> 4 x 3.000 = 12.000)
+            // Pecahan: Berapapun LK tetap dihitung Rp 3.000 (1 x Rp 3.000)
             if ($request->filled('biaya_adm')) {
                 $biayaAdm = (float) $request->biaya_adm;
             } else {
-                $biayaAdm = ($tipeNota === 'pernama') ? ($countSmu > 0 ? 3000 : 0) : ($countSmu * 3000);
+                $biayaAdm = ($tipeNota === 'pernama') ? ($countSmu * 3000) : ($countSmu > 0 ? 3000 : 0);
             }
 
             $totalNota = $subtotal + $biayaAdm + $penyesuaian;

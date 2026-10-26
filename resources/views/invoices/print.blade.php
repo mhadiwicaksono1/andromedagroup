@@ -245,7 +245,7 @@
                             {{ number_format($invoice->worksheetItems->sum('berat_kg'), 0, ',', '.') }}
                         </td>
                         <td class="text-right font-mono text-slate-500" style="padding: 7px 10px; font-size: 11px;">
-                            {{ $invoice->tipe_nota === 'pernama' ? '1 Nota' : '@ Rp 3.000' }}
+                            {{ $invoice->tipe_nota === 'pernama' ? ($invoice->worksheetItems->count() . ' SMU') : '1 Nota' }}
                         </td>
                         <td class="text-right font-mono font-bold text-slate-900" style="padding: 7px 10px;">
                             Rp {{ number_format($invoice->biaya_adm, 0, ',', '.') }}
@@ -298,7 +298,7 @@
                         @if($invoice->biaya_adm > 0)
                             <tr style="color: #0d9488;">
                                 <td style="padding: 4px 0;">
-                                    + ADM ({{ $invoice->tipe_nota === 'pernama' ? '1 Nota' : $invoice->worksheetItems->count() . ' SMU @ Rp 3.000' }}):
+                                    + ADM ({{ $invoice->tipe_nota === 'pernama' ? $invoice->worksheetItems->count() . ' SMU @ Rp 3.000' : '1 Nota' }}):
                                 </td>
                                 <td class="text-right font-mono font-bold" style="padding: 4px 0;">
                                     Rp {{ number_format($invoice->biaya_adm, 0, ',', '.') }}
