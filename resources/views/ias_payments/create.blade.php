@@ -88,11 +88,18 @@
                         <label class="uk-form-label text-xs font-semibold text-foreground uppercase tracking-wider block">
                             Pilih Master SMU (Lembar Kerja) *
                         </label>
-                        <span class="text-[11px] text-primary font-medium">Header SMU Maskapai</span>
+                        @if($worksheets->isEmpty())
+                            <a href="{{ route('worksheets.create') }}" target="_blank" class="text-[11px] text-primary hover:underline font-semibold flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                <span>+ Buat Lembar Kerja Baru</span>
+                            </a>
+                        @else
+                            <span class="text-[11px] text-primary font-medium">Header SMU Maskapai</span>
+                        @endif
                     </div>
                     
-                    <select name="worksheet_id" id="select_worksheet" class="select2 uk-select text-xs" data-placeholder="-- Cari / Pilih Nomor SMU --">
-                        <option value="">-- Cari / Pilih Nomor Master SMU --</option>
+                    <select name="worksheet_id" id="select_worksheet" class="select2 uk-select text-xs" data-placeholder="{{ $worksheets->isEmpty() ? '-- Belum Ada Data Lembar Kerja --' : '-- Cari / Pilih Nomor SMU --' }}">
+                        <option value="">{{ $worksheets->isEmpty() ? '-- Belum Ada Data Lembar Kerja di Database --' : '-- Cari / Pilih Nomor Master SMU --' }}</option>
                         @foreach($worksheets as $ws)
                             @php
                                 $wsCusts = $ws->items->map(fn($it) => $it->customer?->nama)->filter()->unique()->values();
@@ -114,10 +121,21 @@
                         @endforeach
                     </select>
 
+                    @if($worksheets->isEmpty())
+                        <div class="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-[11px] flex items-start gap-2">
+                            <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <div>
+                                <strong>Data Lembar Kerja saat ini kosong</strong> di database (karena data bulan Oktober baru saja dihapus). Anda dapat <a href="{{ route('worksheets.create') }}" target="_blank" class="underline font-bold text-primary">buat Lembar Kerja baru di sini</a>, atau langsung ketik nomor SMU di bawah.
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="flex items-center gap-2 pt-1">
                         <span class="text-[11px] text-muted-foreground whitespace-nowrap">Nomor SMU:</span>
                         <input type="text" name="nomor_smu" id="input_nomor_smu" value="{{ old('nomor_smu', $selectedSmu) }}" required
-                               placeholder="Contoh: GA-88291044 / JT-991204" class="uk-input text-xs font-mono font-bold h-8">
+                                placeholder="Contoh: GA-88291044 / JT-991204" class="uk-input text-xs font-mono font-bold h-8">
                     </div>
                     <span class="text-[10px] text-muted-foreground block">Otomatis terisi dari SMU terpilih di atas, atau ketik nomor SMU jika manual.</span>
                     @error('nomor_smu')
