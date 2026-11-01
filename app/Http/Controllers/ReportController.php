@@ -85,9 +85,9 @@ class ReportController extends Controller
         $customerId = $request->query('customer_id');
 
         $query = Customer::whereHas('invoices', function ($q) {
-            $q->where('status_pembayaran', '!=', 'lunas');
+            $q->whereNotIn('status_pembayaran', ['lunas', 'dibatalkan']);
         })->with(['invoices' => function ($q) {
-            $q->where('status_pembayaran', '!=', 'lunas')->orderBy('tanggal', 'asc');
+            $q->whereNotIn('status_pembayaran', ['lunas', 'dibatalkan'])->orderBy('tanggal', 'asc');
         }]);
 
         if ($customerId) {
@@ -250,9 +250,9 @@ class ReportController extends Controller
         $customerId = $request->query('customer_id');
 
         $query = Customer::whereHas('invoices', function ($q) {
-            $q->where('status_pembayaran', '!=', 'lunas');
+            $q->whereNotIn('status_pembayaran', ['lunas', 'dibatalkan']);
         })->with(['invoices' => function ($q) {
-            $q->where('status_pembayaran', '!=', 'lunas')->orderBy('tanggal', 'asc');
+            $q->whereNotIn('status_pembayaran', ['lunas', 'dibatalkan'])->orderBy('tanggal', 'asc');
         }]);
 
         if ($customerId) {

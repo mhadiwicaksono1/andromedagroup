@@ -110,7 +110,7 @@
                         $groupTotal = count($permissions);
                         $groupChecked = $role->slug === 'admin' ? $groupTotal : count(array_intersect($permissions->pluck('id')->toArray(), $rolePermissionIds));
                     @endphp
-                    <div class="uk-card uk-card-default border border-border rounded-xl p-4 shadow-2xs hover:border-border/80 transition-colors flex flex-col justify-between group-box">
+                    <div class="uk-card uk-card-default border border-border rounded-xl p-4 shadow-2xs hover:border-border/80 transition-colors flex flex-col justify-start group-box">
                         <!-- Group Header -->
                         <div class="flex items-center justify-between pb-3 mb-3 border-b border-border">
                             <div class="flex items-center gap-2">

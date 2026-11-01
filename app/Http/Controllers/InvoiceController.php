@@ -17,7 +17,7 @@ class InvoiceController extends Controller
         $status = $request->query('status');
         $customerId = $request->query('customer_id');
 
-        $query = Invoice::with(['customer', 'worksheetItems.worksheet', 'payments']);
+        $query = Invoice::withTrashed()->with(['customer', 'worksheetItems.worksheet', 'payments']);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -29,7 +29,7 @@ class InvoiceController extends Controller
             });
         }
 
-        if ($status && in_array($status, ['belum_lunas', 'sebagian', 'lunas'])) {
+        if ($status && in_array($status, ['belum_lunas', 'sebagian', 'lunas', 'dibatalkan'])) {
             $query->where('status_pembayaran', $status);
         }
 
@@ -84,7 +84,8 @@ class InvoiceController extends Controller
         ]);
 
         return DB::transaction(function () use ($request) {
-            $items = WorksheetItem::whereIn('id', $request->worksheet_ids)
+            $items = WorksheetItem::with(['worksheet', 'customer'])
+                ->whereIn('id', $request->worksheet_ids)
                 ->where('customer_id', $request->customer_id)
                 ->where('status', 'selesai')
                 ->whereNull('invoice_id')
@@ -100,18 +101,23 @@ class InvoiceController extends Controller
             $sisaHutangLama = (float) $request->sisa_hutang_sebelumnya;
             $penyesuaian = (float) ($request->penyesuaian_biaya ?? 0);
 
+            // Hitung Biaya Administrasi (ADM):
+            // Point 7: untuk pecahan biaya admin nya cuma 3000 untuk semua pecahan ( 1 x 3000 ), 
+            // sedangkan untuk pernama biaya admin nya total lk x 3000
+
+            // Hitung komposisi tipe LK
+            $pecahanCount = $items->filter(fn($i) => ($i->worksheet->tipe ?? 'pecahan') === 'pecahan')->count();
+            $pernamaCount = $items->filter(fn($i) => ($i->worksheet->tipe ?? 'pecahan') === 'pernama')->count();
+
+            $biayaAdmPecahan = ($pecahanCount > 0) ? 3000.0 : 0.0;
+            $biayaAdmPernama = (float) ($pernamaCount * 3000);
+            $calculatedBiayaAdm = $biayaAdmPecahan + $biayaAdmPernama;
+
+            $biayaAdm = $request->filled('biaya_adm') ? (float) $request->biaya_adm : $calculatedBiayaAdm;
+
             // Tentukan tipe nota
             $countSmu = $items->count();
-            $tipeNota = $request->tipe_nota ?: ($countSmu > 1 ? 'pernama' : 'pecahan');
-
-            // Hitung Biaya Administrasi (ADM):
-            // Pernama: (Jumlah LK / SMU) x Rp 3.000 (misal 4 LK -> 4 x 3.000 = 12.000)
-            // Pecahan: Berapapun LK tetap dihitung Rp 3.000 (1 x Rp 3.000)
-            if ($request->filled('biaya_adm')) {
-                $biayaAdm = (float) $request->biaya_adm;
-            } else {
-                $biayaAdm = ($tipeNota === 'pernama') ? ($countSmu * 3000) : ($countSmu > 0 ? 3000 : 0);
-            }
+            $tipeNota = $request->tipe_nota ?: ($pernamaCount > 0 ? 'pernama' : 'pecahan');
 
             $totalNota = $subtotal + $biayaAdm + $penyesuaian;
             $totalTagihanKumulatif = $sisaHutangLama + $totalNota;
@@ -135,6 +141,8 @@ class InvoiceController extends Controller
                 'sisa_hutang_sebelumnya' => $sisaHutangLama,
                 'subtotal_lembar_kerja' => $subtotal,
                 'biaya_adm' => $biayaAdm,
+                'biaya_adm_pecahan' => $biayaAdmPecahan,
+                'biaya_adm_pernama' => $biayaAdmPernama,
                 'penyesuaian_biaya' => $penyesuaian,
                 'total_nota' => $totalNota,
                 'total_tagihan_kumulatif' => $totalTagihanKumulatif,
@@ -197,22 +205,43 @@ class InvoiceController extends Controller
 
     public function destroy(Invoice $invoice)
     {
+        if ($invoice->status_pembayaran === 'dibatalkan') {
+            return redirect()->back()->with('error', 'Nota ini sudah dibatalkan sebelumnya.');
+        }
+
         DB::transaction(function () use ($invoice) {
+            $invoice->load(['worksheetItems.worksheet', 'worksheetItems.customer', 'allocations.payment']);
+
+            // 1. Simpan snapshot detail lembar kerja sebelum dilepas agar nota lama tetap utuh untuk perbandingan
+            $snapshot = $invoice->worksheetItems->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'worksheet_id' => $item->worksheet_id,
+                    'nomor_lembar_kerja' => $item->worksheet->nomor_lembar_kerja ?? '-',
+                    'nomor_smu' => $item->worksheet->nomor_smu ?? '-',
+                    'tipe_lembar_kerja' => $item->worksheet->tipe ?? 'pecahan',
+                    'tanggal' => $item->worksheet ? $item->worksheet->tanggal->format('Y-m-d') : null,
+                    'customer_id' => $item->customer_id,
+                    'customer_nama' => $item->customer->nama ?? '-',
+                    'jumlah_koli' => (int) $item->jumlah_koli,
+                    'berat_kg' => (float) $item->berat_kg,
+                    'tarif_per_kg' => (float) $item->tarif_per_kg,
+                    'total_biaya' => (float) $item->total_biaya,
+                    'keterangan' => $item->keterangan,
+                    'origin' => $item->origin ?? ($item->worksheet->origin ?? 'lop'),
+                    'marking' => $item->marking ?? '-',
+                ];
+            })->toArray();
+
             $parentIds = $invoice->worksheetItems->pluck('worksheet_id')->unique();
 
-            // Revert worksheet items back to 'selesai'
+            // 2. Kembalikan worksheet items ke status 'selesai' dan kosongkan invoice_id agar bisa diedit & dinotakan ulang
             WorksheetItem::where('invoice_id', $invoice->id)->update([
                 'invoice_id' => null,
                 'status' => 'selesai',
             ]);
 
-            // Delete associated payments
-            $invoice->payments()->delete();
-
-            $nomor = $invoice->nomor_nota;
-            $invoice->delete();
-
-            // Recalculate parent worksheets
+            // 3. Recalculate parent worksheets status
             foreach ($parentIds as $wId) {
                 $parent = \App\Models\Worksheet::find($wId);
                 if ($parent) {
@@ -221,10 +250,29 @@ class InvoiceController extends Controller
                 }
             }
 
-            return redirect()->route('invoices.index')
-                ->with('success', "Nota {$nomor} berhasil dibatalkan dan item lembar kerja dikembalikan ke status Selesai.");
+            // 4. Batalkan alokasi pembayaran terkait
+            foreach ($invoice->allocations as $alloc) {
+                $payment = $alloc->payment;
+                $alloc->delete();
+                if ($payment) {
+                    $payment->sisa_lebih_bayar = (float) $payment->sisa_lebih_bayar + (float) $alloc->jumlah_alokasi;
+                    $payment->save();
+                }
+            }
+
+            // Hapus pembayaran awal langsung yang dibuat saat penerbitan nota ini
+            Payment::where('invoice_id', $invoice->id)->delete();
+
+            // 5. Update status nota ke 'dibatalkan', simpan snapshot, nolkan sisa piutang, dan soft delete
+            $invoice->items_snapshot = $snapshot;
+            $invoice->status_pembayaran = 'dibatalkan';
+            $invoice->sisa_piutang = 0;
+            $invoice->batal_at = now();
+            $invoice->save();
+            $invoice->delete();
         });
 
-        return redirect()->route('invoices.index');
+        return redirect()->route('invoices.index')
+            ->with('success', "Nota {$invoice->nomor_nota} berhasil dibatalkan. Seluruh lembar kerja telah dibuka kembali untuk diedit atau dinotakan ulang, dan arsip data nota lama tetap tersimpan.");
     }
 }

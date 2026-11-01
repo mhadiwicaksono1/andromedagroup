@@ -345,4 +345,43 @@ class WorksheetController extends Controller
 
         return redirect()->route('worksheets.index')->with('success', "Lembar kerja {$nomor} berhasil dihapus (Soft Delete).");
     }
+
+    public function unbilled(Request $request)
+    {
+        $search = $request->query('search');
+
+        $query = Customer::where('status', 'active')
+            ->whereHas('worksheetItems', function ($q) {
+                $q->where('status', 'selesai')
+                  ->whereNull('invoice_id');
+            })
+            ->with(['worksheetItems' => function ($q) {
+                $q->where('status', 'selesai')
+                  ->whereNull('invoice_id')
+                  ->with('worksheet');
+            }]);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                  ->orWhere('kode_customer', 'like', "%{$search}%");
+            });
+        }
+
+        $customers = $query->orderBy('nama')->paginate(15)->withQueryString();
+
+        $allUnbilledItems = WorksheetItem::where('status', 'selesai')
+            ->whereNull('invoice_id')
+            ->get();
+
+        $summary = [
+            'total_customer' => Customer::whereHas('worksheetItems', fn($q) => $q->where('status', 'selesai')->whereNull('invoice_id'))->count(),
+            'total_lk' => $allUnbilledItems->count(),
+            'total_berat' => (float) $allUnbilledItems->sum('berat_kg'),
+            'total_koli' => (int) $allUnbilledItems->sum('jumlah_koli'),
+            'total_biaya' => (float) $allUnbilledItems->sum('total_biaya'),
+        ];
+
+        return view('worksheets.unbilled', compact('customers', 'summary', 'search'));
+    }
 }

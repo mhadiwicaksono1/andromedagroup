@@ -218,12 +218,12 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($invoice->worksheetItems as $index => $item)
+                @foreach($invoice->display_items as $index => $item)
                     <tr>
                         <td class="text-center">{{ $index + 1 }}</td>
-                        <td class="font-mono font-bold">{{ $item->worksheet->nomor_smu ?? '-' }}</td>
+                        <td class="font-mono font-bold">{{ $item->nomor_smu ?? '-' }}</td>
                         <td class="font-mono font-bold text-slate-800">{{ $item->marking ?? '-' }}</td>
-                        <td class="text-center font-mono uppercase">{{ $item->origin ?? $item->worksheet->origin ?? 'lop' }}</td>
+                        <td class="text-center font-mono uppercase">{{ $item->origin ?? 'lop' }}</td>
                         <td class="text-center font-mono font-medium">{{ $item->jumlah_koli }} KOLI</td>
                         <td class="text-right font-mono">{{ number_format($item->berat_kg, 0, ',', '.') }}</td>
                         <td class="text-right font-mono">Rp {{ number_format($item->tarif_per_kg, 0, ',', '.') }}</td>
@@ -239,13 +239,13 @@
                         </td>
                         <td class="text-center font-mono font-bold" style="padding: 7px 10px;"></td>
                         <td class="text-center font-mono font-bold" style="padding: 7px 10px;">
-                            {{ number_format($invoice->worksheetItems->sum('jumlah_koli'), 0, ',', '.') }} KOLI
+                            {{ number_format($invoice->display_items->sum('jumlah_koli'), 0, ',', '.') }} KOLI
                         </td>
                         <td class="text-right font-mono font-bold" style="padding: 7px 10px;">
-                            {{ number_format($invoice->worksheetItems->sum('berat_kg'), 0, ',', '.') }}
+                            {{ number_format($invoice->display_items->sum('berat_kg'), 0, ',', '.') }}
                         </td>
                         <td class="text-right font-mono text-slate-500" style="padding: 7px 10px; font-size: 11px;">
-                            {{ $invoice->tipe_nota === 'pernama' ? ($invoice->worksheetItems->count() . ' SMU') : '1 Nota' }}
+                            ADM
                         </td>
                         <td class="text-right font-mono font-bold text-slate-900" style="padding: 7px 10px;">
                             Rp {{ number_format($invoice->biaya_adm, 0, ',', '.') }}
@@ -254,8 +254,8 @@
                 @else
                     <tr style="background-color: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
                         <td colspan="4" class="text-right font-bold" style="padding: 7px 10px;">TOTAL MUATAN:</td>
-                        <td class="text-center font-mono font-bold" style="padding: 7px 10px;">{{ number_format($invoice->worksheetItems->sum('jumlah_koli'), 0, ',', '.') }} KOLI</td>
-                        <td class="text-right font-mono font-bold" style="padding: 7px 10px;">{{ number_format($invoice->worksheetItems->sum('berat_kg'), 0, ',', '.') }}</td>
+                        <td class="text-center font-mono font-bold" style="padding: 7px 10px;">{{ number_format($invoice->display_items->sum('jumlah_koli'), 0, ',', '.') }} KOLI</td>
+                        <td class="text-right font-mono font-bold" style="padding: 7px 10px;">{{ number_format($invoice->display_items->sum('berat_kg'), 0, ',', '.') }}</td>
                         <td></td>
                         <td class="text-right font-mono font-bold" style="padding: 7px 10px;">Rp {{ number_format($invoice->subtotal_lembar_kerja, 0, ',', '.') }}</td>
                     </tr>
@@ -296,13 +296,21 @@
                             <td class="text-right font-mono" style="padding: 4px 0;">Rp {{ number_format($invoice->subtotal_lembar_kerja, 0, ',', '.') }}</td>
                         </tr>
                         @if($invoice->biaya_adm > 0)
-                            <tr style="color: #0d9488;">
-                                <td style="padding: 4px 0;">
-                                    + ADM ({{ $invoice->tipe_nota === 'pernama' ? $invoice->worksheetItems->count() . ' SMU @ Rp 3.000' : '1 Nota' }}):
-                                </td>
-                                <td class="text-right font-mono font-bold" style="padding: 4px 0;">
-                                    Rp {{ number_format($invoice->biaya_adm, 0, ',', '.') }}
-                                </td>
+                            @if($invoice->biaya_adm_pecahan > 0)
+                                <tr style="color: #0d9488; font-size: 11px;">
+                                    <td style="padding: 2px 0;">+ ADM Pecahan (1 x Rp 3.000):</td>
+                                    <td class="text-right font-mono" style="padding: 2px 0;">Rp {{ number_format($invoice->biaya_adm_pecahan, 0, ',', '.') }}</td>
+                                </tr>
+                            @endif
+                            @if($invoice->biaya_adm_pernama > 0)
+                                <tr style="color: #0d9488; font-size: 11px;">
+                                    <td style="padding: 2px 0;">+ ADM Pernama ({{ round($invoice->biaya_adm_pernama / 3000) }} LK x Rp 3.000):</td>
+                                    <td class="text-right font-mono" style="padding: 2px 0;">Rp {{ number_format($invoice->biaya_adm_pernama, 0, ',', '.') }}</td>
+                                </tr>
+                            @endif
+                            <tr style="color: #0d9488; font-weight: bold;">
+                                <td style="padding: 4px 0;">+ Total Biaya Administrasi (ADM):</td>
+                                <td class="text-right font-mono font-bold" style="padding: 4px 0;">Rp {{ number_format($invoice->biaya_adm, 0, ',', '.') }}</td>
                             </tr>
                         @endif
                         @if($invoice->penyesuaian_biaya != 0)

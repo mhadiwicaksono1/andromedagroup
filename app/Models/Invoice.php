@@ -16,6 +16,8 @@ class Invoice extends Model
         'sisa_hutang_sebelumnya',
         'subtotal_lembar_kerja',
         'biaya_adm',
+        'biaya_adm_pecahan',
+        'biaya_adm_pernama',
         'penyesuaian_biaya',
         'total_nota',
         'total_tagihan_kumulatif',
@@ -23,6 +25,9 @@ class Invoice extends Model
         'sisa_piutang',
         'status_pembayaran',
         'catatan',
+        'items_snapshot',
+        'batal_at',
+        'alasan_batal',
         'user_id',
     ];
 
@@ -31,11 +36,15 @@ class Invoice extends Model
         'sisa_hutang_sebelumnya' => 'decimal:2',
         'subtotal_lembar_kerja' => 'decimal:2',
         'biaya_adm' => 'decimal:2',
+        'biaya_adm_pecahan' => 'decimal:2',
+        'biaya_adm_pernama' => 'decimal:2',
         'penyesuaian_biaya' => 'decimal:2',
         'total_nota' => 'decimal:2',
         'total_tagihan_kumulatif' => 'decimal:2',
         'jumlah_dibayar' => 'decimal:2',
         'sisa_piutang' => 'decimal:2',
+        'items_snapshot' => 'array',
+        'batal_at' => 'datetime',
     ];
 
     public function customer()
@@ -97,5 +106,54 @@ class Invoice extends Model
         }
 
         return $generated;
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->status_pembayaran === 'dibatalkan';
+    }
+
+    public function getDisplayItemsAttribute()
+    {
+        if ($this->worksheetItems && $this->worksheetItems->isNotEmpty()) {
+            return $this->worksheetItems->map(function ($item) {
+                return (object) [
+                    'id' => $item->id,
+                    'worksheet_id' => $item->worksheet_id,
+                    'worksheet' => $item->worksheet,
+                    'nomor_lembar_kerja' => $item->worksheet->nomor_lembar_kerja ?? '-',
+                    'tanggal' => $item->worksheet ? $item->worksheet->tanggal : null,
+                    'nomor_smu' => $item->worksheet->nomor_smu ?? '-',
+                    'tipe_lembar_kerja' => $item->worksheet->tipe ?? 'pecahan',
+                    'marking' => $item->marking ?? '-',
+                    'origin' => $item->origin ?? ($item->worksheet->origin ?? 'lop'),
+                    'jumlah_koli' => (int) $item->jumlah_koli,
+                    'berat_kg' => (float) $item->berat_kg,
+                    'tarif_per_kg' => (float) $item->tarif_per_kg,
+                    'total_biaya' => (float) $item->total_biaya,
+                    'keterangan' => $item->keterangan,
+                    'customer_id' => $item->customer_id,
+                    'customer_nama' => $item->customer->nama ?? ($this->customer->nama ?? '-'),
+                ];
+            });
+        }
+
+        if (!empty($this->items_snapshot)) {
+            return collect($this->items_snapshot)->map(function ($s) {
+                $obj = (object) $s;
+                $tgl = !empty($s['tanggal']) ? \Carbon\Carbon::parse($s['tanggal']) : null;
+                $obj->tanggal = $tgl;
+                $obj->worksheet = (object) [
+                    'nomor_lembar_kerja' => $s['nomor_lembar_kerja'] ?? '-',
+                    'nomor_smu' => $s['nomor_smu'] ?? '-',
+                    'tanggal' => $tgl,
+                    'tipe' => $s['tipe_lembar_kerja'] ?? 'pecahan',
+                    'origin' => $s['origin'] ?? 'lop',
+                ];
+                return $obj;
+            });
+        }
+
+        return collect();
     }
 }

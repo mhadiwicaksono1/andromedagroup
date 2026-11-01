@@ -22,13 +22,14 @@ class CargoDashboardController extends Controller
             'dinotakan' => WorksheetItem::where('status', 'dinotakan')->count(),
         ];
 
-        // Total omzet dari nota bulan ini
+        // Total omzet dari nota bulan ini (tidak termasuk nota yang dibatalkan)
         $omzetBulanIni = Invoice::whereMonth('tanggal', now()->month)
             ->whereYear('tanggal', now()->year)
+            ->where('status_pembayaran', '!=', 'dibatalkan')
             ->sum('total_nota');
 
         // Total piutang yang belum lunas
-        $totalPiutang = Invoice::where('status_pembayaran', '!=', 'lunas')->sum('sisa_piutang');
+        $totalPiutang = Invoice::whereNotIn('status_pembayaran', ['lunas', 'dibatalkan'])->sum('sisa_piutang');
 
         // Lembar kerja terbaru
         $recentWorksheets = Worksheet::with('items.customer')
@@ -46,9 +47,9 @@ class CargoDashboardController extends Controller
 
         // Customer dengan piutang tertinggi
         $customersWithDebt = Customer::whereHas('invoices', function ($q) {
-            $q->where('status_pembayaran', '!=', 'lunas');
+            $q->whereNotIn('status_pembayaran', ['lunas', 'dibatalkan']);
         })->withSum(['invoices as total_piutang_aktif' => function ($q) {
-            $q->where('status_pembayaran', '!=', 'lunas');
+            $q->whereNotIn('status_pembayaran', ['lunas', 'dibatalkan']);
         }], 'sisa_piutang')
         ->orderByDesc('total_piutang_aktif')
         ->take(5)

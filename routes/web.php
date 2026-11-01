@@ -57,6 +57,10 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/', [WorksheetController::class, 'store'])->name('store');
         });
 
+        Route::get('/unbilled', [WorksheetController::class, 'unbilled'])
+            ->middleware('permission:worksheets.unbilled')
+            ->name('unbilled');
+
         Route::middleware(['permission:worksheets.view'])->group(function () {
             Route::get('/', [WorksheetController::class, 'index'])->name('index');
             Route::get('/{worksheet}', [WorksheetController::class, 'show'])->name('show');
@@ -76,8 +80,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [InvoiceController::class, 'index'])->name('index');
         Route::get('/create', [InvoiceController::class, 'create'])->name('create');
         Route::post('/', [InvoiceController::class, 'store'])->name('store');
-        Route::get('/{invoice}', [InvoiceController::class, 'show'])->name('show');
-        Route::get('/{invoice}/print', [InvoiceController::class, 'print'])->name('print');
+        Route::get('/{invoice}', [InvoiceController::class, 'show'])->name('show')->withTrashed();
+        Route::get('/{invoice}/print', [InvoiceController::class, 'print'])->name('print')->withTrashed();
         Route::delete('/{invoice}', [InvoiceController::class, 'destroy'])->name('destroy');
         Route::post('/{invoice}/payments', [PaymentController::class, 'storeForInvoice'])->name('payments.store');
     });

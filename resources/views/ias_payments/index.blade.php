@@ -150,23 +150,21 @@
                 </a>
             </div>
         </form>
-    </div>
-
-    <!-- Table of IAS Payments -->
+    </div>    <!-- Table of IAS Payments -->
     <div class="uk-card uk-card-default border border-border overflow-hidden">
         <div class="overflow-x-auto">
             <table class="uk-table uk-table-divider uk-table-hover uk-table-small text-xs">
                 <thead>
                     <tr class="bg-muted/40 text-muted-foreground border-b border-border">
                         <th class="py-3 px-4 font-medium">Tanggal</th>
-                        <th class="py-3 px-4 font-medium">No. Transaksi IAS</th>
+                        <th class="py-3 px-4 font-medium">No. Kuitansi / Transaksi</th>
+                        <th class="py-3 px-4 font-medium">Dasar Master SMU / AWB</th>
+                        <th class="py-3 px-4 font-medium">Koli &amp; Berat</th>
                         <th class="py-3 px-4 font-medium">Dasar Nota</th>
-                        <th class="py-3 px-4 font-medium">Dasar Master SMU</th>
-                        <th class="py-3 px-4 font-medium text-right">Nominal Bayar (Rp)</th>
+                        <th class="py-3 px-4 font-medium text-right">Rincian Handling</th>
+                        <th class="py-3 px-4 font-medium text-right">Total Bayar (Rp)</th>
                         <th class="py-3 px-4 font-medium text-right text-teal-600 dark:text-teal-400">Cash Back (Rp)</th>
-                        <th class="py-3 px-4 font-medium">Bank &amp; Metode</th>
                         <th class="py-3 px-4 font-medium text-center">Status</th>
-                        <th class="py-3 px-4 font-medium">Keterangan / Sumber</th>
                         <th class="py-3 px-4 font-medium text-right">Aksi</th>
                     </tr>
                 </thead>
@@ -176,32 +174,18 @@
                             <td class="py-3.5 px-4 text-muted-foreground whitespace-nowrap">
                                 {{ $p->tanggal->format('d/m/Y') }}
                             </td>
-                            <td class="py-3.5 px-4 font-mono font-bold text-foreground whitespace-nowrap">
-                                {{ $p->nomor_transaksi_ias }}
-                            </td>
                             <td class="py-3.5 px-4 whitespace-nowrap">
-                                @if($p->invoices->isNotEmpty())
-                                    <div class="space-y-0.5">
-                                        <div class="flex flex-wrap items-center gap-1 max-w-[200px]">
-                                             @foreach($p->invoices as $inv)
-                                                <a href="{{ route('invoices.show', $inv) }}" class="font-mono font-bold text-primary hover:underline text-[11px]" title="Lihat Detail Nota">
-                                                    {{ $inv->nomor_nota }}
-                                                </a>{{ !$loop->last ? ',' : '' }}
-                                            @endforeach
-                                        </div>
-                                        @php
-                                            $custNames = $p->invoices->map(fn($i) => $i->customer?->nama)->filter()->unique()->values();
-                                        @endphp
-                                        @if($custNames->isNotEmpty())
-                                            <span class="text-[10px] text-muted-foreground block truncate max-w-[180px]" title="{{ $custNames->implode(', ') }}">
-                                                {{ $custNames->implode(', ') }}
-                                            </span>
-                                        @endif
+                                <div class="font-mono font-bold text-foreground">
+                                    {{ $p->no_kuitansi ?? $p->nomor_transaksi_ias }}
+                                </div>
+                                @if($p->no_btb)
+                                    <div class="text-[10px] text-muted-foreground font-mono">
+                                        BTB: {{ $p->no_btb }}
                                     </div>
-                                @elseif($p->nomor_nota)
-                                    <span class="font-mono font-bold text-primary text-[11px]">{{ $p->nomor_nota }}</span>
-                                @else
-                                    <span class="text-muted-foreground">-</span>
+                                @elseif($p->no_kuitansi && $p->nomor_transaksi_ias !== $p->no_kuitansi)
+                                    <div class="text-[10px] text-muted-foreground font-mono">
+                                        ID: {{ $p->nomor_transaksi_ias }}
+                                    </div>
                                 @endif
                             </td>
                             <td class="py-3.5 px-4 whitespace-nowrap">
@@ -213,10 +197,11 @@
                                         <div class="flex flex-wrap items-center gap-1 max-w-[220px]">
                                             @foreach($smus as $smuItem)
                                                 @php
-                                                    $matchedWs = \App\Models\Worksheet::where('nomor_smu', $smuItem)->first();
+                                                    $cleanS = str_replace(['-', ' '], '', $smuItem);
+                                                    $matchedWs = \App\Models\Worksheet::where('nomor_smu', $smuItem)->orWhere('nomor_smu', $cleanS)->first();
                                                 @endphp
                                                 @if($matchedWs)
-                                                    <a href="{{ route('worksheets.show', $matchedWs) }}" class="font-mono font-bold text-foreground hover:underline text-[11px]" title="Lihat Lembar Kerja">
+                                                    <a href="{{ route('worksheets.show', $matchedWs) }}" class="font-mono font-bold text-primary hover:underline text-[11px]" title="Lihat Lembar Kerja">
                                                         {{ $smuItem }}
                                                     </a>{{ !$loop->last ? ',' : '' }}
                                                 @else
@@ -224,12 +209,72 @@
                                                 @endif
                                             @endforeach
                                         </div>
-                                        @if($p->worksheet)
-                                            <span class="text-[10px] text-muted-foreground font-mono block">
-                                                {{ number_format($p->worksheet->total_berat_kg, 1, ',', '.') }} kg / {{ $p->worksheet->total_koli }} koli
+                                        @if($p->airline)
+                                            <span class="text-[10px] text-muted-foreground block truncate max-w-[200px]" title="{{ $p->airline }}">
+                                                {{ $p->airline }}
+                                            </span>
+                                        @endif
+                                        @if($p->ori && $p->dst)
+                                            <span class="text-[9px] font-mono px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
+                                                {{ $p->ori }} &rarr; {{ $p->dst }}
                                             </span>
                                         @endif
                                     </div>
+                                @else
+                                    <span class="text-muted-foreground">-</span>
+                                @endif
+                            </td>
+                            <td class="py-3.5 px-4 whitespace-nowrap">
+                                @php
+                                    $koliVal = $p->koli > 0 ? $p->koli : ($p->worksheet?->total_koli ?? 0);
+                                    $beratVal = $p->berat_kg > 0 ? $p->berat_kg : ($p->worksheet?->total_berat_kg ?? 0);
+                                @endphp
+                                <div class="font-mono font-semibold text-foreground">
+                                    {{ number_format($beratVal, 1, ',', '.') }} kg
+                                </div>
+                                <div class="text-[10px] text-muted-foreground">
+                                    {{ $koliVal }} koli
+                                </div>
+                                @if($p->komoditi)
+                                    <div class="text-[9px] text-muted-foreground/80 truncate max-w-[120px]" title="{{ $p->komoditi }}">
+                                        {{ $p->komoditi }}
+                                    </div>
+                                @endif
+                            </td>
+                            <td class="py-3.5 px-4 whitespace-nowrap">
+                                @if($p->invoices->isNotEmpty())
+                                    <div class="space-y-0.5">
+                                        <div class="flex flex-wrap items-center gap-1 max-w-[180px]">
+                                             @foreach($p->invoices as $inv)
+                                                <a href="{{ route('invoices.show', $inv) }}" class="font-mono font-bold text-primary hover:underline text-[11px]" title="Lihat Detail Nota">
+                                                    {{ $inv->nomor_nota }}
+                                                </a>{{ !$loop->last ? ',' : '' }}
+                                            @endforeach
+                                        </div>
+                                        @php
+                                            $custNames = $p->invoices->map(fn($i) => $i->customer?->nama)->filter()->unique()->values();
+                                        @endphp
+                                        @if($custNames->isNotEmpty())
+                                            <span class="text-[10px] text-muted-foreground block truncate max-w-[170px]" title="{{ $custNames->implode(', ') }}">
+                                                {{ $custNames->implode(', ') }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                @elseif($p->nomor_nota)
+                                    <span class="font-mono font-bold text-primary text-[11px]">{{ $p->nomor_nota }}</span>
+                                @else
+                                    <span class="text-[11px] text-muted-foreground italic">Belum Ada Nota</span>
+                                @endif
+                            </td>
+                            <td class="py-3.5 px-4 text-right whitespace-nowrap font-mono text-[11px]">
+                                @if($p->handling > 0 || $p->adm_fee > 0 || $p->pndp > 0)
+                                    <div><span class="text-muted-foreground text-[10px]">Hndl:</span> {{ number_format($p->handling, 0, ',', '.') }}</div>
+                                    @if($p->adm_fee > 0)
+                                        <div class="text-[10px] text-muted-foreground">Adm: {{ number_format($p->adm_fee, 0, ',', '.') }}</div>
+                                    @endif
+                                    @if($p->pndp > 0)
+                                        <div class="text-[10px] text-muted-foreground">PNDP: {{ number_format($p->pndp, 0, ',', '.') }}</div>
+                                    @endif
                                 @else
                                     <span class="text-muted-foreground">-</span>
                                 @endif
@@ -240,10 +285,6 @@
                             <td class="py-3.5 px-4 text-right font-mono font-semibold {{ $p->cashback > 0 ? 'text-teal-600 dark:text-teal-400' : 'text-muted-foreground/50' }} whitespace-nowrap">
                                 {{ $p->cashback > 0 ? 'Rp ' . number_format($p->cashback, 0, ',', '.') : '-' }}
                             </td>
-                            <td class="py-3.5 px-4 whitespace-nowrap">
-                                <span class="font-semibold text-foreground">{{ $p->bank_pengirim ?? 'Bank' }}</span>
-                                <span class="text-muted-foreground font-mono">({{ strtoupper($p->metode_bayar) }})</span>
-                            </td>
                             <td class="py-3.5 px-4 text-center whitespace-nowrap">
                                 @if($p->status === 'berhasil')
                                     <span class="uk-label uk-label-success text-[10px]">BERHASIL</span>
@@ -251,12 +292,6 @@
                                     <span class="uk-label uk-label-warning text-[10px]">PENDING</span>
                                 @else
                                     <span class="uk-label uk-label-danger text-[10px]">GAGAL</span>
-                                @endif
-                            </td>
-                            <td class="py-3.5 px-4 max-w-xs truncate" title="{{ $p->catatan }}">
-                                <span class="text-foreground">{{ $p->catatan ?? '-' }}</span>
-                                @if($p->file_referensi)
-                                    <span class="block text-[10px] text-muted-foreground font-mono">File: {{ $p->file_referensi }}</span>
                                 @endif
                             </td>
                             <td class="py-3.5 px-4 text-right whitespace-nowrap">
@@ -295,28 +330,42 @@
         <button class="uk-modal-close-default" type="button" uk-close></button>
         <h2 class="text-base font-bold text-foreground">Import File Pembayaran ke IAS</h2>
         <p class="text-xs text-muted-foreground mt-1 mb-4">
-            Unggah file transaksi pembayaran CSV dari bank atau sistem finance perusahaan untuk dicocokkan dengan tagihan IAS.
+            Unggah file laporan tagihan/kuitansi Excel dari IAS (.xlsx, .xls) atau file .CSV untuk dicatat dan dicocokkan otomatis.
         </p>
 
         <form action="{{ route('ias.payments.import') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
             @csrf
 
             <div class="p-4 rounded-lg border-2 border-dashed border-border text-center bg-muted/20 hover:bg-muted/40 transition-colors">
-                <input type="file" name="file_import" accept=".csv,.txt" required class="w-full text-xs cursor-pointer">
+                <input type="file" name="file_import" accept=".xlsx,.xls,.csv,.txt" required class="w-full text-xs cursor-pointer">
                 <p class="text-[11px] text-muted-foreground mt-2">
-                    Format file: <strong>.CSV</strong> (pemisah koma atau titik koma). Maksimal 5MB.
+                    Format file: <strong>Excel (.xlsx, .xls)</strong> atau <strong>.CSV</strong>. Maksimal 10MB.
                 </p>
+                <div class="mt-2 text-left space-y-1 text-[11px] text-muted-foreground bg-background/60 p-2.5 rounded border border-border">
+                    <p class="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                        <span>✓</span> Mendukung format resmi tabel kuitansi IAS (AWB, BTB/TTB, Airline, Qty, GW, CHW, Handling, Adm Fee, PNDP, Total).
+                    </p>
+                    <p class="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                        <span>✓</span> Baris subtotal hijau (<em>"Total Kuitansi..."</em>) dilewati secara otomatis.
+                    </p>
+                    <p class="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                        <span>✓</span> Jika nomor SMU memiliki 2 baris (misal 2x pengiriman 1 SMU), kedua baris tetap tersimpan dan ditampilkan terpisah.
+                    </p>
+                    <p class="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                        <span>✓</span> Cashback otomatis diestimasi Rp 200/kg dari berat kargo (CHW/GW).
+                    </p>
+                </div>
             </div>
 
             <div class="p-3 bg-muted/40 rounded-lg text-xs space-y-1 text-muted-foreground">
-                <p class="font-bold text-foreground">Struktur Kolom CSV yang Didukung:</p>
-                <p class="font-mono text-[11px]">tanggal, nomor_nota, nomor_smu, nomor_transaksi_ias, nominal, metode_bayar, bank_pengirim, catatan</p>
+                <p class="font-bold text-foreground">Kolom yang Dikenali Otomatis:</p>
+                <p class="font-mono text-[10px] break-all">No, Nomor Kuitansi, No. BTB/TTB, AWB, Airline, Tanggal, Customer, Shipper, Consignee, ORI, DST, Komoditi, Goods, Qty, GW, CHW, Handling, Adm Fee, PNDP, Total</p>
                 <div class="pt-2">
                     <a href="{{ route('ias.payments.template') }}" class="text-primary hover:underline font-semibold inline-flex items-center gap-1">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                         </svg>
-                        <span>Klik di sini untuk mengunduh template contoh CSV</span>
+                        <span>Unduh Contoh Template Sesuai Format IAS (.csv)</span>
                     </a>
                 </div>
             </div>

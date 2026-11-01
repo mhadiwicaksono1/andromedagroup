@@ -41,6 +41,7 @@
                     <option value="belum_lunas" {{ $status === 'belum_lunas' ? 'selected' : '' }}>Belum Lunas</option>
                     <option value="sebagian" {{ $status === 'sebagian' ? 'selected' : '' }}>Sebagian</option>
                     <option value="lunas" {{ $status === 'lunas' ? 'selected' : '' }}>Lunas</option>
+                    <option value="dibatalkan" {{ $status === 'dibatalkan' ? 'selected' : '' }}>Dibatalkan</option>
                 </select>
 
                 <button type="submit" class="uk-btn uk-btn-secondary uk-btn-sm text-xs shadow-xs">
@@ -77,9 +78,9 @@
                 </thead>
                 <tbody class="divide-y divide-border">
                     @forelse($invoices as $inv)
-                        <tr class="hover:bg-muted/40 transition-colors">
+                        <tr class="hover:bg-muted/40 transition-colors {{ $inv->status_pembayaran === 'dibatalkan' ? 'opacity-70 bg-destructive/5' : '' }}">
                             <td class="py-3.5 px-4 font-mono font-bold">
-                                <a href="{{ route('invoices.show', $inv) }}" class="text-primary hover:underline">
+                                <a href="{{ route('invoices.show', $inv) }}" class="text-primary hover:underline {{ $inv->status_pembayaran === 'dibatalkan' ? 'line-through text-muted-foreground' : '' }}">
                                     {{ $inv->nomor_nota }}
                                 </a>
                                 @if($inv->tipe_nota)
@@ -96,7 +97,7 @@
                             </td>
                             <td class="py-3.5 px-4 text-center">
                                 <span class="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-muted text-foreground border border-border">
-                                    {{ count($inv->worksheets) }} LK
+                                    {{ count($inv->display_items) }} LK
                                 </span>
                             </td>
                             <td class="py-3.5 px-4 text-right font-mono text-muted-foreground">
@@ -111,7 +112,7 @@
                             <td class="py-3.5 px-4 text-right font-semibold font-mono text-emerald-500">
                                 Rp {{ number_format($inv->jumlah_dibayar, 0, ',', '.') }}
                             </td>
-                            <td class="py-3.5 px-4 text-right font-bold font-mono text-destructive">
+                            <td class="py-3.5 px-4 text-right font-bold font-mono {{ $inv->status_pembayaran === 'dibatalkan' ? 'text-muted-foreground' : 'text-destructive' }}">
                                 Rp {{ number_format($inv->sisa_piutang, 0, ',', '.') }}
                             </td>
                             <td class="py-3.5 px-4 text-center">
@@ -119,12 +120,15 @@
                                     <span class="uk-label uk-label-success text-[10px]">LUNAS</span>
                                 @elseif($inv->status_pembayaran === 'sebagian')
                                     <span class="uk-label uk-label-warning text-[10px]">SEBAGIAN</span>
+                                @elseif($inv->status_pembayaran === 'dibatalkan')
+                                    <span class="uk-label uk-label-danger text-[10px] font-bold">DIBATALKAN</span>
                                 @else
                                     <span class="uk-label uk-label-danger text-[10px]">BELUM LUNAS</span>
                                 @endif
+                            </td>
                             <td class="py-3.5 px-4 text-right">
                                 <div class="flex items-center justify-end gap-1">
-                                    @if($inv->sisa_piutang > 0)
+                                    @if($inv->sisa_piutang > 0 && $inv->status_pembayaran !== 'dibatalkan')
                                         <button type="button" uk-toggle="target: #modal-payment-{{ $inv->id }}" 
                                            title="Bayar Piutang Nota {{ $inv->nomor_nota }}"
                                            class="uk-btn uk-btn-primary uk-btn-xs px-2 py-1 text-[11px] font-semibold flex items-center gap-1 shadow-xs whitespace-nowrap">

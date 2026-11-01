@@ -62,22 +62,23 @@ class Customer extends Model
     public function getSisaHutangAttribute(): float
     {
         return (float) $this->invoices()
-            ->where('status_pembayaran', '!=', 'lunas')
+            ->whereNotIn('status_pembayaran', ['lunas', 'dibatalkan'])
             ->sum('sisa_piutang');
     }
 
     public function getKartuPiutangAttribute(): array
     {
         $invoices = $this->invoices()->with('worksheetItems')->get()->map(function ($inv) {
+            $isBatal = ($inv->status_pembayaran === 'dibatalkan');
             return [
                 'id' => $inv->id,
                 'tanggal' => $inv->tanggal,
                 'created_at' => $inv->created_at,
                 'tipe' => 'invoice',
-                'tipe_label' => 'Nota Penagihan',
+                'tipe_label' => $isBatal ? 'Nota Dibatalkan' : 'Nota Penagihan',
                 'nomor_referensi' => $inv->nomor_nota,
-                'keterangan' => 'Penerbitan Nota ' . $inv->nomor_nota . ' (' . $inv->worksheetItems->count() . ' muatan kargo)',
-                'debit' => (float) $inv->total_nota,
+                'keterangan' => ($isBatal ? '[DIBATALKAN] ' : '') . 'Penerbitan Nota ' . $inv->nomor_nota . ' (' . count($inv->display_items) . ' muatan kargo)',
+                'debit' => $isBatal ? 0.0 : (float) $inv->total_nota,
                 'kredit' => 0.0,
                 'url' => route('invoices.show', $inv),
                 'status' => $inv->status_pembayaran,

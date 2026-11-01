@@ -24,7 +24,13 @@ class IasPaymentController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('nomor_transaksi_ias', 'like', "%{$search}%")
+                  ->orWhere('no_kuitansi', 'like', "%{$search}%")
+                  ->orWhere('no_btb', 'like', "%{$search}%")
                   ->orWhere('nomor_smu', 'like', "%{$search}%")
+                  ->orWhere('airline', 'like', "%{$search}%")
+                  ->orWhere('shipper', 'like', "%{$search}%")
+                  ->orWhere('consignee', 'like', "%{$search}%")
+                  ->orWhere('komoditi', 'like', "%{$search}%")
                   ->orWhere('nomor_nota', 'like', "%{$search}%")
                   ->orWhere('catatan', 'like', "%{$search}%")
                   ->orWhereHas('invoices.customer', function ($cq) use ($search) {
@@ -75,44 +81,37 @@ class IasPaymentController extends Controller
         $today = now()->toDateString();
         $autoNomor = 'IAS-' . date('Ymd') . '-' . strtoupper(Str::random(4));
         
-        $rawInvoiceIds = $request->query('invoice_ids', []);
-        if (!is_array($rawInvoiceIds)) {
-            $rawInvoiceIds = explode(',', $rawInvoiceIds);
-        }
-        if ($request->query('invoice_id')) {
-            $rawInvoiceIds[] = $request->query('invoice_id');
-        }
-        $selectedInvoiceIds = array_values(array_filter(array_map('intval', $rawInvoiceIds)));
         $selectedSmu = $request->query('nomor_smu');
+        $selectedWorksheetId = $request->query('worksheet_id');
 
-        $invoices = Invoice::with(['customer', 'worksheetItems.worksheet'])
+        $worksheets = Worksheet::with(['items.customer', 'items.invoice'])
             ->latest('tanggal')
             ->latest('id')
             ->get();
 
-        $worksheets = collect();
-
         return view('ias_payments.create', compact(
             'today',
             'autoNomor',
-            'invoices',
             'worksheets',
-            'selectedInvoiceIds',
-            'selectedSmu'
+            'selectedSmu',
+            'selectedWorksheetId'
         ));
     }
 
     public function store(Request $request)
     {
+        if (!$request->filled('nomor_smu') && $request->filled('invoice_ids')) {
+            $firstInv = Invoice::with('worksheetItems.worksheet')->find($request->invoice_ids[0]);
+            $smu = $firstInv?->worksheetItems->first()?->worksheet?->nomor_smu ?? 'SMU-AUTO';
+            $request->merge(['nomor_smu' => $smu]);
+        }
+
         $validated = $request->validate([
             'nomor_transaksi_ias' => 'required|string|max:80|unique:ias_payments,nomor_transaksi_ias',
             'tanggal' => 'required|date',
-            'invoice_ids' => 'nullable|array',
-            'invoice_ids.*' => 'exists:invoices,id',
-            'invoice_id' => 'nullable|exists:invoices,id',
-            'nomor_nota' => 'nullable|string',
-            'nomor_smu' => 'nullable|string',
             'worksheet_id' => 'nullable|exists:worksheets,id',
+            'nomor_smu' => 'required|string|max:80',
+            'nomor_nota' => 'nullable|string|max:100',
             'nominal' => 'required|numeric|min:1',
             'cashback' => 'nullable|numeric|min:0',
             'metode_bayar' => 'required|string|max:40',
@@ -120,50 +119,46 @@ class IasPaymentController extends Controller
             'nomor_rekening_tujuan' => 'nullable|string|max:80',
             'status' => 'required|in:berhasil,pending,gagal',
             'catatan' => 'nullable|string',
+            'invoice_ids' => 'nullable|array',
+            'invoice_ids.*' => 'exists:invoices,id',
         ]);
 
         $validated['cashback'] = $validated['cashback'] ?? 0;
-
-        $invoiceIds = $validated['invoice_ids'] ?? [];
-        if (!empty($validated['invoice_id']) && !in_array($validated['invoice_id'], $invoiceIds)) {
-            $invoiceIds[] = $validated['invoice_id'];
+        if ($request->filled('nomor_nota')) {
+            $validated['nomor_nota'] = $request->nomor_nota;
         }
 
-        $invoices = collect();
-        if (!empty($invoiceIds)) {
-            $invoices = Invoice::with(['customer', 'worksheetItems.worksheet'])->whereIn('id', $invoiceIds)->get();
-            if (empty($validated['nomor_nota'])) {
-                $validated['nomor_nota'] = $invoices->pluck('nomor_nota')->implode(', ');
-            }
-            if (empty($validated['nomor_smu'])) {
-                $allSmus = $invoices->flatMap(function ($inv) {
-                    return $inv->worksheetItems->map(fn($it) => $it->worksheet?->nomor_smu);
-                })->filter()->unique()->values()->implode(', ');
-                if (!empty($allSmus)) {
-                    $validated['nomor_smu'] = $allSmus;
-                }
-            }
-            $validated['invoice_id'] = $invoices->first()?->id;
-        } elseif (!empty($validated['nomor_nota'])) {
-            $notas = array_filter(array_map('trim', explode(',', $validated['nomor_nota'])));
-            $invoices = Invoice::with(['customer', 'worksheetItems.worksheet'])->whereIn('nomor_nota', $notas)->get();
-            $validated['invoice_id'] = $invoices->first()?->id;
-        }
-
+        $ws = null;
         if (!empty($validated['worksheet_id'])) {
-            $ws = Worksheet::find($validated['worksheet_id']);
-            if ($ws && empty($validated['nomor_smu'])) {
-                $validated['nomor_smu'] = $ws->nomor_smu;
-            }
+            $ws = Worksheet::with('items.invoice')->find($validated['worksheet_id']);
         } elseif (!empty($validated['nomor_smu'])) {
             $firstSmu = trim(explode(',', $validated['nomor_smu'])[0]);
-            $ws = Worksheet::where('nomor_smu', $firstSmu)->first();
+            $ws = Worksheet::with('items.invoice')->where('nomor_smu', $firstSmu)->first();
             if ($ws) {
                 $validated['worksheet_id'] = $ws->id;
             }
         }
 
-        unset($validated['invoice_ids']);
+        if ($ws) {
+            $validated['koli'] = $ws->display_koli_smu;
+            $validated['berat_kg'] = $ws->display_berat_smu;
+        }
+
+        $invoices = collect();
+        if ($request->filled('invoice_ids')) {
+            $invoices = Invoice::whereIn('id', $request->invoice_ids)->get();
+            if ($invoices->isNotEmpty()) {
+                $validated['nomor_nota'] = $invoices->pluck('nomor_nota')->implode(', ');
+                $validated['invoice_id'] = $invoices->first()?->id;
+            }
+        } elseif ($ws) {
+            $invoices = $ws->items->map(fn($it) => $it->invoice)->filter()->unique('id')->values();
+            if ($invoices->isNotEmpty() && empty($validated['nomor_nota'])) {
+                $validated['nomor_nota'] = $invoices->pluck('nomor_nota')->implode(', ');
+                $validated['invoice_id'] = $invoices->first()?->id;
+            }
+        }
+
         $validated['user_id'] = Auth::id();
 
         $iasPayment = IasPayment::create($validated);
@@ -186,93 +181,220 @@ class IasPaymentController extends Controller
     public function import(Request $request)
     {
         $request->validate([
-            'file_import' => 'required|file|mimes:csv,txt|max:5120',
+            'file_import' => 'required|file|max:10240',
         ]);
 
         $file = $request->file('file_import');
         $filename = $file->getClientOriginalName();
         $path = $file->getRealPath();
+        $ext = strtolower($file->getClientOriginalExtension());
 
-        $rows = array_map(function ($line) {
-            // Support both comma and semicolon delimiters
-            $delimiter = strpos($line, ';') !== false ? ';' : ',';
-            return str_getcsv($line, $delimiter);
-        }, file($path));
-
-        if (count($rows) < 2) {
-            return redirect()->back()->with('error', 'File CSV kosong atau tidak memiliki baris data.');
+        $rows = [];
+        if (in_array($ext, ['xlsx', 'xls']) && class_exists(\PhpOffice\PhpSpreadsheet\IOFactory::class)) {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($path);
+            $worksheet = $spreadsheet->getActiveSheet();
+            $rows = $worksheet->toArray(null, true, true, false);
+        } else {
+            $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            $rows = array_map(function ($line) {
+                $delimiter = strpos($line, ';') !== false ? ';' : ',';
+                return str_getcsv($line, $delimiter);
+            }, $lines);
         }
 
-        $header = array_map('trim', array_map('strtolower', $rows[0]));
+        if (count($rows) < 2) {
+            return redirect()->back()->with('error', 'File kosong atau tidak memiliki baris data.');
+        }
+
+        // Dynamically find header row in the first 15 rows
+        $headerRowIndex = 0;
+        for ($r = 0; $r < min(15, count($rows)); $r++) {
+            $normalizedRow = array_map(function ($col) {
+                return trim(strtolower(str_replace([' ', '-', '.', '/', '(', ')'], '_', (string) $col)));
+            }, $rows[$r]);
+
+            $hasAwb = in_array('awb', $normalizedRow) || in_array('nomor_smu', $normalizedRow) || in_array('awb_nomor_smu', $normalizedRow) || in_array('no_smu', $normalizedRow) || in_array('smu', $normalizedRow);
+            $hasKuitansi = in_array('nomor_kuitansi', $normalizedRow) || in_array('no_kuitansi', $normalizedRow) || in_array('kuitansi', $normalizedRow);
+            $hasTotalOrHandling = in_array('total', $normalizedRow) || in_array('handling', $normalizedRow) || in_array('nominal', $normalizedRow);
+
+            if (($hasAwb && ($hasKuitansi || $hasTotalOrHandling)) || ($hasKuitansi && $hasTotalOrHandling)) {
+                $headerRowIndex = $r;
+                break;
+            }
+        }
+
+        $rawHeader = $rows[$headerRowIndex];
+        $headerMap = [];
+        foreach ($rawHeader as $idx => $colName) {
+            $normalized = trim(strtolower(str_replace([' ', '-', '.', '/', '(', ')'], '_', (string) $colName)));
+            $normalized = preg_replace('/_+/', '_', $normalized);
+            $normalized = trim($normalized, '_');
+            $headerMap[$idx] = $normalized;
+        }
+
         $importedCount = 0;
         $failedCount = 0;
+        $skippedSubtotalCount = 0;
 
-        for ($i = 1; $i < count($rows); $i++) {
+        for ($i = $headerRowIndex + 1; $i < count($rows); $i++) {
             $row = $rows[$i];
             if (empty($row) || (count($row) === 1 && empty($row[0]))) {
                 continue;
             }
 
-            // Combine with header
             $data = [];
-            foreach ($header as $colIdx => $colName) {
-                $data[$colName] = isset($row[$colIdx]) ? trim($row[$colIdx]) : null;
+            foreach ($headerMap as $colIdx => $colKey) {
+                $data[$colKey] = isset($row[$colIdx]) ? trim((string) $row[$colIdx]) : null;
             }
 
-            $nomorTransaksi = $data['nomor_transaksi_ias'] ?? $data['no_transaksi'] ?? $data['kode_transaksi'] ?? ('IAS-' . date('Ymd') . '-' . strtoupper(Str::random(5)));
-            $tanggal = $data['tanggal'] ?? now()->toDateString();
-            $nomorNota = $data['nomor_nota'] ?? $data['no_nota'] ?? $data['nota'] ?? null;
-            $nomorSmu = $data['nomor_smu'] ?? $data['smu'] ?? null;
-            $nominalRaw = preg_replace('/[^0-9.]/', '', str_replace(',', '.', $data['nominal'] ?? $data['jumlah'] ?? '0'));
-            $nominal = (float) $nominalRaw;
-            $cashbackRaw = preg_replace('/[^0-9.]/', '', str_replace(',', '.', $data['cashback'] ?? $data['cash_back'] ?? '0'));
-            $cashback = (float) $cashbackRaw;
+            // Identify subtotal / summary row (e.g. green row "Total Kuitansi BTHPID2610000092")
+            $firstFewCols = implode(' ', array_slice(array_filter(array_map('strval', $row)), 0, 4));
+            $isSubtotalRow = false;
+            if (preg_match('/total\s+kuitansi|total\s+transaksi|total\s+bayar|subtotal/i', $firstFewCols)) {
+                $isSubtotalRow = true;
+            }
 
-            if ($nominal <= 0) {
+            $noKuitansiRaw = $data['nomor_kuitansi'] ?? $data['no_kuitansi'] ?? $data['kuitansi'] ?? $data['nomor_transaksi_ias'] ?? $data['no_transaksi'] ?? null;
+            if ($noKuitansiRaw && preg_match('/^total/i', trim($noKuitansiRaw))) {
+                $isSubtotalRow = true;
+            }
+
+            if ($isSubtotalRow) {
+                $skippedSubtotalCount++;
+                continue;
+            }
+
+            $nomorSmu = $data['awb'] ?? $data['awb_nomor_smu'] ?? $data['no_awb'] ?? $data['nomor_smu'] ?? $data['no_smu'] ?? $data['smu'] ?? null;
+
+            // If both AWB and kuitansi are empty or empty row
+            if (empty($nomorSmu) && empty($noKuitansiRaw)) {
+                continue;
+            }
+
+            $tanggalRaw = $data['tanggal'] ?? $data['tgl'] ?? $data['date'] ?? null;
+            $tanggal = $this->parseExcelDate($tanggalRaw);
+
+            $noBtb = $data['no_btb_ttb'] ?? $data['no_btb'] ?? $data['btb_ttb'] ?? $data['btb'] ?? $data['ttb'] ?? null;
+            $airline = $data['airline'] ?? $data['maskapai'] ?? null;
+            $shipper = $data['shipper'] ?? $data['sender'] ?? null;
+            $consignee = $data['consignee'] ?? $data['receiver'] ?? null;
+            $ori = $data['ori'] ?? $data['origin'] ?? null;
+            $dst = $data['dst'] ?? $data['dest'] ?? $data['destination'] ?? null;
+            $komoditi = $data['komoditi'] ?? $data['commodity'] ?? $data['goods'] ?? $data['barang'] ?? null;
+
+            $koli = (int) ($this->parseIndonesianNumber($data['qty'] ?? $data['koli'] ?? $data['pieces'] ?? 0));
+            $chw = $this->parseIndonesianNumber($data['chw'] ?? $data['chargeable_weight'] ?? $data['berat_kg'] ?? $data['berat'] ?? null);
+            $gw = $this->parseIndonesianNumber($data['gw'] ?? $data['gross_weight'] ?? null);
+            $beratKg = $chw > 0 ? $chw : ($gw > 0 ? $gw : 0.0);
+
+            $handling = $this->parseIndonesianNumber($data['handling'] ?? 0);
+            $admFee = $this->parseIndonesianNumber($data['adm_fee'] ?? $data['admin_fee'] ?? $data['biaya_admin'] ?? 0);
+            $pndp = $this->parseIndonesianNumber($data['pndp'] ?? 0);
+
+            $total = $this->parseIndonesianNumber($data['total'] ?? $data['nominal'] ?? $data['jumlah'] ?? $data['subtotal'] ?? 0);
+            if ($total <= 0 && $handling > 0) {
+                $total = $handling + $admFee + $pndp;
+            }
+
+            if ($total <= 0) {
                 $failedCount++;
                 continue;
             }
 
+            // Cashback calculation: default Rp 200/kg standard IAS cashback if not provided
+            $explicitCashback = isset($data['cashback']) || isset($data['cash_back']);
+            if ($explicitCashback) {
+                $cashback = $this->parseIndonesianNumber($data['cashback'] ?? $data['cash_back'] ?? 0);
+            } else {
+                $cashback = $beratKg > 0 ? round($beratKg * 200, 2) : 0.0;
+            }
+
+            // Clean nomor kuitansi and ensure a unique nomor_transaksi_ias (handles 2x pengiriman 1 SMU)
+            $noKuitansi = $noKuitansiRaw ? trim($noKuitansiRaw) : null;
+            $baseNomorTransaksi = $noKuitansi ?: ($nomorSmu ? 'IAS-' . str_replace(['-', ' '], '', $nomorSmu) : 'IAS-' . date('Ymd') . '-' . strtoupper(Str::random(4)));
+
+            $nomorTransaksi = $baseNomorTransaksi;
+            $counter = 1;
+            while (IasPayment::where('nomor_transaksi_ias', $nomorTransaksi)->exists()) {
+                $counter++;
+                $nomorTransaksi = $baseNomorTransaksi . '-' . $counter;
+            }
+
+            // Link Worksheet by AWB / SMU
+            $worksheetId = null;
+            $matchedWs = null;
+            if ($nomorSmu) {
+                $cleanSmu = str_replace(['-', ' '], '', $nomorSmu);
+                $matchedWs = Worksheet::with('items.invoice')->where('nomor_smu', $nomorSmu)
+                    ->orWhere('nomor_smu', $cleanSmu)
+                    ->orWhere('nomor_smu', 'like', "%{$cleanSmu}%")
+                    ->first();
+                if ($matchedWs) {
+                    $worksheetId = $matchedWs->id;
+                }
+            }
+
+            // Link Invoices
+            $nomorNota = $data['nomor_nota'] ?? $data['no_nota'] ?? $data['nota'] ?? $data['invoice'] ?? null;
             $invoices = collect();
             $firstInvoiceId = null;
+
             if ($nomorNota) {
                 $notasList = array_filter(array_map('trim', explode(',', $nomorNota)));
                 $invoices = Invoice::whereIn('nomor_nota', $notasList)->get();
                 $firstInvoiceId = $invoices->first()?->id;
+            } elseif ($matchedWs) {
+                $invoices = $matchedWs->items->map(fn($it) => $it->invoice)->filter()->unique('id')->values();
+                if ($invoices->isNotEmpty()) {
+                    $nomorNota = $invoices->pluck('nomor_nota')->implode(', ');
+                    $firstInvoiceId = $invoices->first()?->id;
+                }
             }
 
-            $worksheetId = null;
-            if ($nomorSmu) {
-                $firstSmu = trim(explode(',', $nomorSmu)[0]);
-                $ws = Worksheet::where('nomor_smu', $firstSmu)->first();
-                if ($ws) {
-                    $worksheetId = $ws->id;
-                }
+            // Catatan deskriptif
+            $customCatatan = $data['catatan'] ?? $data['keterangan'] ?? null;
+            if (!$customCatatan) {
+                $parts = [];
+                if ($airline) $parts[] = $airline;
+                if ($nomorSmu) $parts[] = "AWB: {$nomorSmu}";
+                if ($ori && $dst) $parts[] = "{$ori} -> {$dst}";
+                if ($komoditi) $parts[] = "Komoditi: {$komoditi}";
+                if ($koli > 0 || $beratKg > 0) $parts[] = "({$koli} koli / {$beratKg} kg)";
+                $customCatatan = !empty($parts) ? implode(' | ', $parts) : "Import pembayaran IAS {$noKuitansi}";
             }
 
             $metode = $data['metode_bayar'] ?? $data['metode'] ?? 'transfer';
             $bank = $data['bank_pengirim'] ?? $data['bank'] ?? 'BCA';
-            $catatan = $data['catatan'] ?? $data['keterangan'] ?? 'Import pembayaran ke IAS';
 
-            // Check if already exists, update or insert
-            $iasPayment = IasPayment::updateOrCreate(
-                ['nomor_transaksi_ias' => $nomorTransaksi],
-                [
-                    'tanggal' => $tanggal,
-                    'nomor_nota' => $nomorNota,
-                    'invoice_id' => $firstInvoiceId,
-                    'nomor_smu' => $nomorSmu,
-                    'worksheet_id' => $worksheetId,
-                    'nominal' => $nominal,
-                    'cashback' => $cashback,
-                    'metode_bayar' => $metode,
-                    'bank_pengirim' => $bank,
-                    'status' => 'berhasil',
-                    'catatan' => $catatan,
-                    'file_referensi' => $filename,
-                    'user_id' => Auth::id(),
-                ]
-            );
+            $iasPayment = IasPayment::create([
+                'nomor_transaksi_ias' => $nomorTransaksi,
+                'no_kuitansi' => $noKuitansi,
+                'no_btb' => $noBtb,
+                'nomor_smu' => $nomorSmu,
+                'airline' => $airline,
+                'tanggal' => $tanggal,
+                'shipper' => $shipper,
+                'consignee' => $consignee,
+                'ori' => $ori,
+                'dst' => $dst,
+                'komoditi' => $komoditi,
+                'koli' => $koli,
+                'berat_kg' => $beratKg,
+                'handling' => $handling,
+                'adm_fee' => $admFee,
+                'pndp' => $pndp,
+                'nominal' => $total,
+                'cashback' => $cashback,
+                'metode_bayar' => $metode,
+                'bank_pengirim' => $bank,
+                'status' => 'berhasil',
+                'catatan' => $customCatatan,
+                'file_referensi' => $filename,
+                'user_id' => Auth::id(),
+                'worksheet_id' => $worksheetId,
+                'nomor_nota' => $nomorNota,
+                'invoice_id' => $firstInvoiceId,
+            ]);
 
             if ($invoices->isNotEmpty()) {
                 foreach ($invoices as $inv) {
@@ -288,53 +410,242 @@ class IasPaymentController extends Controller
             $importedCount++;
         }
 
-        return redirect()->route('ias.payments.index')
-            ->with('success', "Berhasil mengimpor {$importedCount} transaksi pembayaran ke IAS dari file {$filename}." . ($failedCount > 0 ? " ({$failedCount} baris diabaikan karena nominal tidak valid)" : ""));
+        $msg = "Berhasil mengimpor {$importedCount} transaksi pembayaran ke IAS dari file {$filename}.";
+        if ($skippedSubtotalCount > 0) {
+            $msg .= " ({$skippedSubtotalCount} baris total kuitansi dilewati).";
+        }
+        if ($failedCount > 0) {
+            $msg .= " ({$failedCount} baris diabaikan karena nominal tidak valid).";
+        }
+
+        return redirect()->route('ias.payments.index')->with('success', $msg);
+    }
+
+    protected function parseExcelDate($value): string
+    {
+        if (empty($value)) {
+            return now()->toDateString();
+        }
+
+        if (is_numeric($value) && (float)$value > 20000 && class_exists(\PhpOffice\PhpSpreadsheet\Shared\Date::class)) {
+            try {
+                return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float)$value)->format('Y-m-d');
+            } catch (\Throwable $e) {}
+        }
+
+        $valStr = trim((string)$value);
+
+        try {
+            $carbon = \Carbon\Carbon::parse($valStr);
+            if ($carbon && $carbon->year > 2000) {
+                return $carbon->format('Y-m-d');
+            }
+        } catch (\Throwable $e) {}
+
+        $ts = strtotime($valStr);
+        if ($ts && date('Y', $ts) > 2000) {
+            return date('Y-m-d', $ts);
+        }
+
+        return now()->toDateString();
+    }
+
+    protected function parseIndonesianNumber($val): float
+    {
+        if ($val === null || $val === '') {
+            return 0.0;
+        }
+        if (is_numeric($val)) {
+            return (float)$val;
+        }
+
+        $clean = trim((string)$val);
+        if (strpos($clean, ',') !== false) {
+            $clean = str_replace('.', '', $clean);
+            $clean = str_replace(',', '.', $clean);
+        } elseif (preg_match('/^\d{1,3}(\.\d{3})+$/', $clean)) {
+            $clean = str_replace('.', '', $clean);
+        }
+
+        $clean = preg_replace('/[^0-9.-]/', '', $clean);
+        return (float)$clean;
     }
 
     public function downloadTemplate()
     {
         $headers = [
-            'Content-Type' => 'text/csv',
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="template_import_pembayaran_ias.csv"',
         ];
 
         $callback = function () {
             $handle = fopen('php://output', 'w');
+            fputs($handle, "\xEF\xBB\xBF");
+
             fputcsv($handle, [
-                'tanggal',
+                'No',
+                'Nomor Kuitansi',
+                'No. BTB/TTB',
+                'AWB (nomor_smu)',
+                'Airline',
+                'Tanggal',
                 'nomor_nota',
-                'nomor_smu',
-                'nomor_transaksi_ias',
-                'nominal',
-                'cashback',
-                'metode_bayar',
-                'bank_pengirim',
-                'catatan',
+                'Customer',
+                'Sender',
+                'Receiver',
+                'Shipper',
+                'Consignee',
+                'ORI',
+                'DST',
+                'Komoditi',
+                'Goods',
+                'Qty',
+                'GW',
+                'CHW',
+                'Handling',
+                'Timbun',
+                'SGMA',
+                'Print SMU',
+                'Biaya Lainnya',
+                'Adm Fee',
+                'Subtotal',
+                'PPn',
+                'PNDP',
+                'Materai',
+                'Total',
             ]);
 
-            // Sample rows
+            // Sample rows matching user's image exactly
             fputcsv($handle, [
-                date('Y-m-d'),
-                'INV/202610/0001',
-                '126-98127361',
-                'IAS-202610-0001',
-                '2500000',
-                '300000',
-                'transfer',
-                'BCA',
-                'Pembayaran Terminal Handling SMU CGK-SUB (Cashback Rp 200/kg)',
-            ]);
-            fputcsv($handle, [
-                date('Y-m-d'),
-                'INV/202610/0002',
-                '126-98127362',
-                'IAS-202610-0002',
-                '1850000',
+                '1',
+                'BTHPID2610000092',
+                'BTHCID26090016857',
+                '126-05166770',
+                '(GA) Garuda Indonesia',
+                '01-Oct-26',
+                '',
+                'PT. JASAMITRA EKSPRES',
+                '',
+                '',
+                '-',
+                'JDE/INDRA',
+                'CGK',
+                'BTH',
+                'General',
+                'GENCO',
+                '1',
+                '14',
+                '14',
+                '21.000,00',
                 '0',
-                'transfer',
-                'Mandiri',
-                'Pergudangan & Regulated Agent IAS',
+                '0',
+                '0',
+                '7.000,00',
+                '3.000,00',
+                '31.000,00',
+                '0',
+                '840',
+                '0',
+                '31.840,00',
+            ]);
+
+            fputcsv($handle, [
+                '',
+                'Total Kuitansi BTHPID2610000092',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '1',
+                '14',
+                '14',
+                '21.000,00',
+                '0',
+                '0',
+                '0',
+                '7.000,00',
+                '3.000,00',
+                '31.000,00',
+                '0',
+                '840',
+                '0',
+                '31.840,00',
+            ]);
+
+            fputcsv($handle, [
+                '2',
+                'BTHPID2610000248',
+                'BTHCID26100000201',
+                '273-06943882',
+                '(RI) Rimbun Air',
+                '01-Oct-26',
+                '',
+                'PT. JASAMITRA EKSPRES',
+                '',
+                '',
+                'LOGITRANS / BRK',
+                'DIPO - BTH',
+                'CGK',
+                'BTH',
+                'Strongly Smelling Goods',
+                'DURIAN',
+                '1',
+                '28',
+                '28',
+                '42.000,00',
+                '0',
+                '0',
+                '0',
+                '14.000,00',
+                '3.000,00',
+                '59.000,00',
+                '0',
+                '1.680,00',
+                '0',
+                '60.680,00',
+            ]);
+
+            fputcsv($handle, [
+                '3',
+                'BTHPID2610000412',
+                'BTHCID26100000370',
+                '920-02197322',
+                '(IU) Super Air Jet',
+                '01-Oct-26',
+                '',
+                'PT. JASAMITRA EKSPRES',
+                '',
+                '',
+                '-',
+                'ANDROMEDA GROUP',
+                'YIA',
+                'BTH',
+                'Perishable',
+                'CABAI',
+                '14',
+                '382',
+                '382',
+                '573.000,00',
+                '0',
+                '0',
+                '0',
+                '191.000,00',
+                '3.000,00',
+                '767.000,00',
+                '0',
+                '22.920,00',
+                '0',
+                '789.920,00',
             ]);
 
             fclose($handle);

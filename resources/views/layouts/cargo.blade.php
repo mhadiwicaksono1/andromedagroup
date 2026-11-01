@@ -460,11 +460,22 @@
                     @if(auth()->user()->hasPermission('worksheets.view'))
                     <!-- Lembar Kerja (SMU) -->
                     <a href="{{ route('worksheets.index') }}" 
-                       class="flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-md transition-colors {{ request()->routeIs('worksheets.*') ? 'bg-secondary text-secondary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground hover:bg-muted/70' }}">
-                        <svg class="w-4 h-4 {{ request()->routeIs('worksheets.*') ? 'text-primary' : 'text-muted-foreground' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       class="flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-md transition-colors {{ (request()->routeIs('worksheets.*') && !request()->routeIs('worksheets.unbilled')) ? 'bg-secondary text-secondary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground hover:bg-muted/70' }}">
+                        <svg class="w-4 h-4 {{ (request()->routeIs('worksheets.*') && !request()->routeIs('worksheets.unbilled')) ? 'text-primary' : 'text-muted-foreground' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
                         <span>Lembar Kerja (SMU)</span>
+                    </a>
+                    @endif
+
+                    @if(auth()->user()->hasPermission('worksheets.unbilled'))
+                    <!-- Belum Ternota (Menu Baru) -->
+                    <a href="{{ route('worksheets.unbilled') }}" 
+                       class="flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-md transition-colors {{ request()->routeIs('worksheets.unbilled') ? 'bg-secondary text-secondary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground hover:bg-muted/70' }}">
+                        <svg class="w-4 h-4 {{ request()->routeIs('worksheets.unbilled') ? 'text-primary' : 'text-muted-foreground' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                        </svg>
+                        <span>Belum Ternota</span>
                     </a>
                     @endif
 
@@ -680,6 +691,8 @@
                             Dashboard Operasional
                         @elseif(request()->routeIs('customers.*'))
                             Master Pelanggan
+                        @elseif(request()->routeIs('worksheets.unbilled'))
+                            Kargo Belum Ternota
                         @elseif(request()->routeIs('worksheets.*'))
                             Lembar Kerja SMU
                         @elseif(request()->routeIs('invoices.*'))

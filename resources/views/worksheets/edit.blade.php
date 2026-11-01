@@ -467,6 +467,30 @@
         });
         row.querySelector('.item-tarif')?.addEventListener('input', recalculate);
 
+        row.querySelector('.item-berat')?.addEventListener('keydown', function(e) {
+            if (e.key === 'Tab' && !e.shiftKey) {
+                if (currentTipe !== 'pernama') {
+                    e.preventDefault();
+                    const btnAdd = document.getElementById('btn-add-customer-row');
+                    if (btnAdd) {
+                        btnAdd.click();
+                        setTimeout(() => {
+                            const allRows = document.querySelectorAll('.item-row');
+                            const lastRow = allRows[allRows.length - 1];
+                            if (lastRow) {
+                                const selectCustomer = $(lastRow).find('.item-customer.select2');
+                                if (selectCustomer.length) {
+                                    selectCustomer.select2('open');
+                                } else {
+                                    lastRow.querySelector('select, input')?.focus();
+                                }
+                            }
+                        }, 50);
+                    }
+                }
+            }
+        });
+
         row.querySelector('.btn-remove-row')?.addEventListener('click', function () {
             if (currentTipe === 'pernama') {
                 return;

@@ -16,7 +16,7 @@ class CustomerController extends Controller
 
         $query = Customer::withCount(['worksheetItems', 'invoices'])
             ->withSum(['invoices as total_sisa_piutang' => function ($q) {
-                $q->where('status_pembayaran', '!=', 'lunas');
+                $q->whereNotIn('status_pembayaran', ['lunas', 'dibatalkan']);
             }], 'sisa_piutang');
 
         if ($search) {
@@ -174,7 +174,7 @@ class CustomerController extends Controller
             ->get();
 
         $unpaidInvoices = Invoice::where('customer_id', $customer->id)
-            ->where('status_pembayaran', '!=', 'lunas')
+            ->whereNotIn('status_pembayaran', ['lunas', 'dibatalkan'])
             ->orderBy('tanggal', 'asc')
             ->orderBy('id', 'asc')
             ->get();

@@ -113,6 +113,7 @@
                         <tr class="bg-muted/40 text-muted-foreground border-b border-border">
                             <th class="py-2.5 px-3 w-10 text-center font-medium">Pilih</th>
                             <th class="py-2.5 px-3 font-medium">No. Lembar Kerja</th>
+                            <th class="py-2.5 px-3 text-center font-medium">Tipe LK</th>
                             <th class="py-2.5 px-3 font-medium">Tanggal</th>
                             <th class="py-2.5 px-3 font-medium">No. SMU</th>
                             <th class="py-2.5 px-3 font-medium">Koli / Berat</th>
@@ -139,11 +140,13 @@
                             <label class="uk-form-label text-xs font-semibold text-foreground uppercase tracking-wider block">
                                 Biaya Administrasi (ADM) (Rp)
                             </label>
-                            <span class="text-[10px] text-teal-600 dark:text-teal-400 font-mono font-bold" id="badge-adm-rate">Rp 3.000 / SMU</span>
+                            <span class="text-[10px] text-teal-600 dark:text-teal-400 font-mono font-bold" id="badge-adm-rate">Pecahan: 1x3rb | Pernama: total LK x 3rb</span>
                         </div>
                         <input type="number" step="any" min="0" name="biaya_adm" id="input_biaya_adm" value="0" placeholder="0"
                                class="uk-input text-xs font-mono font-bold text-teal-600 dark:text-teal-400">
-                        <span class="text-[10px] text-muted-foreground mt-1 block" id="help-biaya-adm">Otomatis dihitung Rp 3.000 (dapat disesuaikan jika perlu).</span>
+                        <input type="hidden" name="biaya_adm_pecahan" id="input_biaya_adm_pecahan" value="0">
+                        <input type="hidden" name="biaya_adm_pernama" id="input_biaya_adm_pernama" value="0">
+                        <span class="text-[10px] text-muted-foreground mt-1 block" id="help-biaya-adm">Otomatis dihitung sesuai rincian tipe LK yang dipilih.</span>
                     </div>
 
                     <div>
@@ -189,9 +192,19 @@
                             <span>Subtotal Muatan Terpilih:</span>
                             <span class="font-mono font-semibold text-foreground" id="calc-subtotal-lk">Rp 0</span>
                         </div>
-                        <div class="flex justify-between text-teal-600 dark:text-teal-400 font-semibold">
-                            <span>+ Biaya Administrasi (ADM):</span>
-                            <span class="font-mono font-bold" id="calc-biaya-adm">Rp 0</span>
+                        <div class="p-2.5 rounded bg-background/80 border border-border space-y-1.5">
+                            <div class="flex justify-between text-[11px] text-muted-foreground">
+                                <span>Biaya ADM Pecahan (1 x Rp 3.000):</span>
+                                <span class="font-mono font-medium text-foreground" id="calc-biaya-adm-pecahan">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between text-[11px] text-muted-foreground">
+                                <span>Biaya ADM Pernama (<span id="calc-count-pernama">0</span> LK x Rp 3.000):</span>
+                                <span class="font-mono font-medium text-foreground" id="calc-biaya-adm-pernama">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between text-teal-600 dark:text-teal-400 font-semibold pt-1 border-t border-border">
+                                <span>Total Biaya Administrasi (ADM):</span>
+                                <span class="font-mono font-bold" id="calc-biaya-adm">Rp 0</span>
+                            </div>
                         </div>
                         <div class="flex justify-between text-muted-foreground">
                             <span>Penyesuaian / Biaya Lain:</span>
@@ -328,6 +341,10 @@
                     worksheetsTbody.innerHTML = currentWorksheets.map(ws => {
                         const lkNomor = ws.worksheet ? ws.worksheet.nomor_lembar_kerja : '-';
                         const smuNomor = ws.worksheet ? ws.worksheet.nomor_smu : '-';
+                        const lkTipe = (ws.worksheet && ws.worksheet.tipe) ? ws.worksheet.tipe : 'pecahan';
+                        const tipeBadge = (lkTipe === 'pecahan')
+                            ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-purple-500/10 text-purple-600 border border-purple-500/20">PECAHAN</span>`
+                            : `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-500/10 text-blue-600 border border-blue-500/20">PERNAMA</span>`;
                         const tgl = (ws.worksheet && ws.worksheet.tanggal) 
                             ? new Date(ws.worksheet.tanggal).toLocaleDateString('id-ID')
                             : (ws.created_at ? new Date(ws.created_at).toLocaleDateString('id-ID') : '-');
@@ -337,13 +354,14 @@
                         return `
                         <tr class="hover:bg-muted/40 transition-colors">
                             <td class="py-2.5 px-3 text-center">
-                                <input type="checkbox" name="worksheet_ids[]" value="${ws.id}" data-total="${ws.total_biaya}" checked
+                                <input type="checkbox" name="worksheet_ids[]" value="${ws.id}" data-total="${ws.total_biaya}" data-tipe="${lkTipe}" checked
                                        class="uk-checkbox ws-checkbox cursor-pointer">
                             </td>
                             <td class="py-2.5 px-3 font-mono font-bold text-primary">
                                 ${lkNomor}
                                 ${keterangan}
                             </td>
+                            <td class="py-2.5 px-3 text-center">${tipeBadge}</td>
                             <td class="py-2.5 px-3 text-muted-foreground">${tgl}</td>
                             <td class="py-2.5 px-3">
                                 <span class="font-mono font-medium text-foreground block">${smuNomor}</span>
@@ -373,48 +391,69 @@
 
         function recalculate() {
             const checkboxes = document.querySelectorAll('.ws-checkbox:checked');
-            const smuCount = checkboxes.length;
+            let pecahanCount = 0;
+            let pernamaCount = 0;
 
-            // Auto suggest Tipe Nota: if > 1 -> Pernama, if 1 -> Pecahan
-            if (selectTipeNota && !selectTipeNota.dataset.manual) {
-                if (smuCount > 1) {
-                    selectTipeNota.value = 'pernama';
-                } else if (smuCount === 1) {
-                    selectTipeNota.value = 'pecahan';
+            checkboxes.forEach(cb => {
+                const tipe = cb.dataset.tipe || 'pecahan';
+                if (tipe === 'pecahan') {
+                    pecahanCount++;
+                } else {
+                    pernamaCount++;
                 }
+            });
+
+            // Aturan Biaya Administrasi (Point 7):
+            // Pecahan: flat Rp 3.000 untuk semua pecahan (1 x 3.000)
+            // Pernama: total LK pernama x Rp 3.000
+            const admPecahan = (pecahanCount > 0) ? 3000 : 0;
+            const admPernama = pernamaCount * 3000;
+            const totalAutoAdm = admPecahan + admPernama;
+
+            let biayaAdm = 0;
+            if (!inputBiayaAdm.dataset.manual) {
+                inputBiayaAdm.value = totalAutoAdm;
+                biayaAdm = totalAutoAdm;
+            } else {
+                biayaAdm = parseFloat(inputBiayaAdm.value) || 0;
             }
 
-            const currentTipeNota = selectTipeNota ? selectTipeNota.value : (smuCount > 1 ? 'pernama' : 'pecahan');
+            // Update hidden inputs for backend tracking
+            const inputAdmPecahan = document.getElementById('input_biaya_adm_pecahan');
+            const inputAdmPernama = document.getElementById('input_biaya_adm_pernama');
+            if (inputAdmPecahan) inputAdmPecahan.value = admPecahan;
+            if (inputAdmPernama) inputAdmPernama.value = admPernama;
 
-            // Auto calculate Biaya Administrasi (ADM):
-            // Nota Pernama: (Jumlah LK / SMU) x Rp 3.000 (misal 4 LK -> 4 x 3.000 = 12.000)
-            // Nota Pecahan: Berapapun LK tetap dihitung 1x Rp 3.000
-            let biayaAdm = 0;
-            if (smuCount > 0) {
-                const autoAdm = (currentTipeNota === 'pernama') ? (smuCount * 3000) : 3000;
-                if (!inputBiayaAdm.dataset.manual) {
-                    inputBiayaAdm.value = autoAdm;
-                    biayaAdm = autoAdm;
+            // Auto suggest Tipe Nota
+            if (selectTipeNota && !selectTipeNota.dataset.manual) {
+                if (pernamaCount > 0) {
+                    selectTipeNota.value = 'pernama';
                 } else {
-                    biayaAdm = parseFloat(inputBiayaAdm.value) || 0;
+                    selectTipeNota.value = 'pecahan';
                 }
-            } else {
-                if (!inputBiayaAdm.dataset.manual) {
-                    inputBiayaAdm.value = 0;
-                }
-                biayaAdm = parseFloat(inputBiayaAdm.value) || 0;
             }
 
             // Update badge & helper info
             const badgeAdmRate = document.getElementById('badge-adm-rate');
             const helpAdm = document.getElementById('help-biaya-adm');
+            const calcBiayaAdmPecahan = document.getElementById('calc-biaya-adm-pecahan');
+            const calcCountPernama = document.getElementById('calc-count-pernama');
+            const calcBiayaAdmPernama = document.getElementById('calc-biaya-adm-pernama');
+
+            if (calcBiayaAdmPecahan) {
+                calcBiayaAdmPecahan.textContent = 'Rp ' + admPecahan.toLocaleString('id-ID') + (pecahanCount > 0 ? ` (${pecahanCount} LK Pecahan)` : ' (0 LK)');
+            }
+            if (calcCountPernama) {
+                calcCountPernama.textContent = pernamaCount;
+            }
+            if (calcBiayaAdmPernama) {
+                calcBiayaAdmPernama.textContent = 'Rp ' + admPernama.toLocaleString('id-ID');
+            }
             if (badgeAdmRate) {
-                badgeAdmRate.textContent = (currentTipeNota === 'pernama') ? 'Rp 3.000 / SMU' : 'Rp 3.000 (Tetap 1 Nota)';
+                badgeAdmRate.textContent = `Pecahan: Rp ${admPecahan.toLocaleString('id-ID')} | Pernama: Rp ${admPernama.toLocaleString('id-ID')}`;
             }
             if (helpAdm) {
-                helpAdm.textContent = (currentTipeNota === 'pernama')
-                    ? `Otomatis dihitung Rp 3.000 per SMU / LK (${smuCount} LK x Rp 3.000 = Rp ${(smuCount * 3000).toLocaleString('id-ID')}).`
-                    : 'Otomatis dihitung Rp 3.000 tetap untuk nota pecahan (berapapun LK tetap 1x Rp 3.000).';
+                helpAdm.innerHTML = `Pecahan (${pecahanCount} LK): <strong>Rp ${admPecahan.toLocaleString('id-ID')}</strong> (1 x 3rb) &bull; Pernama (${pernamaCount} LK): <strong>Rp ${admPernama.toLocaleString('id-ID')}</strong> (${pernamaCount} x 3rb).`;
             }
 
             let subtotalLK = 0;

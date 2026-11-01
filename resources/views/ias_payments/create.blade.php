@@ -71,112 +71,82 @@
             </div>
         </div>
 
-        <!-- Card 2: Dasar Pembayaran: Nota Penagihan (Bisa Lebih dari 1 Nota) -->
+        <!-- Card 2: Dasar Pembayaran: Master SMU (Lembar Kerja) -->
         <div class="uk-card uk-card-default border border-border p-6 space-y-4">
             <div class="flex items-center justify-between border-b border-border pb-3">
                 <div class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-foreground">2. Dasar Pembayaran: Nota Penagihan (Bisa Lebih dari 1 Nota)</h3>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-foreground">2. Dasar Pembayaran: Master SMU (Lembar Kerja)</h3>
                 </div>
-                <span class="text-[11px] text-muted-foreground">Nomor SMU, berat kargo &amp; estimasi biaya terminal IAS otomatis ditarik dari nota yang dipilih</span>
+                <span class="text-[11px] text-muted-foreground">Koli, berat &amp; cashback IAS otomatis ditarik dari data fisik Header SMU (Bisa Lebih dari 1 pengiriman jika SMU dipecah)</span>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Multi-Select Pilihan Nota Penagihan -->
+                <!-- Pilihan Master SMU (Lembar Kerja) -->
                 <div class="space-y-2">
                     <div class="flex items-center justify-between">
                         <label class="uk-form-label text-xs font-semibold text-foreground uppercase tracking-wider block">
-                            Pilih Nota Penagihan (Multi-Select)
+                            Pilih Master SMU (Lembar Kerja) *
                         </label>
-                        <span class="text-[11px] text-primary font-medium">Bisa pilih &gt; 1 nota</span>
+                        <span class="text-[11px] text-primary font-medium">Header SMU Maskapai</span>
                     </div>
                     
-                    <select name="invoice_ids[]" id="select_invoices" multiple="multiple" class="select2 uk-select text-xs" data-placeholder="-- Cari / Pilih satu atau beberapa Nota --">
-                        @foreach($invoices as $inv)
+                    <select name="worksheet_id" id="select_worksheet" class="select2 uk-select text-xs" data-placeholder="-- Cari / Pilih Nomor SMU --">
+                        <option value="">-- Cari / Pilih Nomor Master SMU --</option>
+                        @foreach($worksheets as $ws)
                             @php
-                                $invSmus = $inv->worksheetItems->map(fn($it) => $it->worksheet?->nomor_smu)->filter()->unique()->values();
-                                $invWeight = $inv->worksheetItems->sum('berat_kg');
-                                $isSelected = in_array($inv->id, old('invoice_ids', $selectedInvoiceIds ?? []));
+                                $wsCusts = $ws->items->map(fn($it) => $it->customer?->nama)->filter()->unique()->values();
+                                $wsNotas = $ws->items->map(fn($it) => $it->invoice?->nomor_nota)->filter()->unique()->values();
+                                $isSelected = ($selectedWorksheetId == $ws->id) || ($selectedSmu == $ws->nomor_smu);
                             @endphp
-                            <option value="{{ $inv->id }}" 
-                                    data-nomor-nota="{{ $inv->nomor_nota }}"
-                                    data-total="{{ (float) $inv->total_nota }}"
-                                    data-customer="{{ $inv->customer->nama ?? 'Umum' }}"
-                                    data-smus="{{ $invSmus->implode(', ') }}"
-                                    data-weight="{{ (float) $invWeight }}"
+                            <option value="{{ $ws->id }}" 
+                                    data-nomor-smu="{{ $ws->nomor_smu }}"
+                                    data-koli="{{ $ws->display_koli_smu }}"
+                                    data-berat="{{ (float) $ws->display_berat_smu }}"
+                                    data-tanggal="{{ $ws->tanggal->format('d/m/Y') }}"
+                                    data-tipe="{{ strtoupper($ws->tipe) }}"
+                                    data-customers="{{ $wsCusts->implode(', ') }}"
+                                    data-notas="{{ $wsNotas->implode(', ') }}"
+                                    data-total-biaya="{{ (float) $ws->total_biaya }}"
                                     {{ $isSelected ? 'selected' : '' }}>
-                                {{ $inv->nomor_nota }} — {{ $inv->customer->nama ?? 'Umum' }} (Rp {{ number_format($inv->total_nota, 0, ',', '.') }})
+                                {{ $ws->nomor_smu }} — {{ $ws->display_koli_smu }} Koli / {{ number_format($ws->display_berat_smu, 1) }} kg [{{ strtoupper($ws->tipe) }}] ({{ $wsCusts->take(2)->implode(', ') }}{{ count($wsCusts) > 2 ? '...' : '' }})
                             </option>
                         @endforeach
                     </select>
 
                     <div class="flex items-center gap-2 pt-1">
-                        <span class="text-[11px] text-muted-foreground whitespace-nowrap">Rangkuman No. Nota:</span>
-                        <input type="text" name="nomor_nota" id="input_nomor_nota" value="{{ old('nomor_nota') }}" 
-                               placeholder="Contoh: INV/202610/0001, INV/202610/0002" class="uk-input text-xs font-mono h-8">
+                        <span class="text-[11px] text-muted-foreground whitespace-nowrap">Nomor SMU:</span>
+                        <input type="text" name="nomor_smu" id="input_nomor_smu" value="{{ old('nomor_smu', $selectedSmu) }}" required
+                               placeholder="Contoh: GA-88291044 / JT-991204" class="uk-input text-xs font-mono font-bold h-8">
                     </div>
-                    <span class="text-[10px] text-muted-foreground block">Otomatis terisi dari nota yang dipilih di atas, atau bisa diketik manual jika pembayaran massal.</span>
-                    @error('nomor_nota')
-                        <span class="text-destructive text-[11px] mt-1 block">{{ $message }}</span>
-                    @enderror
-                </div>
-
-                <!-- Otomatisasi Rujukan Master SMU dari Nota -->
-                <div class="space-y-2">
-                    <div class="flex items-center justify-between">
-                        <label class="uk-form-label text-xs font-semibold text-foreground uppercase tracking-wider block">
-                            Dasar Master SMU (Otomatis dari Nota)
-                        </label>
-                        <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold uppercase tracking-wider">Terhubung Otomatis</span>
-                    </div>
-
-                    <div class="relative">
-                        <input type="text" name="nomor_smu" id="input_nomor_smu" value="{{ old('nomor_smu', $selectedSmu) }}" 
-                               placeholder="Nomor SMU otomatis muncul saat nota dipilih..." class="uk-input text-xs font-mono font-bold bg-muted/40">
-                    </div>
-                    <span class="text-[10px] text-muted-foreground block">
-                        Kumpulan nomor Master SMU maskapai yang otomatis dirangkum dari isi nota yang dipilih.
-                    </span>
+                    <span class="text-[10px] text-muted-foreground block">Otomatis terisi dari SMU terpilih di atas, atau ketik nomor SMU jika manual.</span>
                     @error('nomor_smu')
                         <span class="text-destructive text-[11px] mt-1 block">{{ $message }}</span>
                     @enderror
+                </div>
 
-                    <div id="badge-smus-container" class="flex flex-wrap gap-1.5 pt-1">
-                        <!-- Badges SMU injected dynamically -->
+                <!-- Header SMU Metrics Card -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label class="uk-form-label text-xs font-semibold text-foreground uppercase tracking-wider block">
+                            Fisik Header SMU (Koli &amp; Kg)
+                        </label>
+                        <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold uppercase tracking-wider">Header SMU Terverifikasi</span>
                     </div>
-                </div>
-            </div>
 
-            <!-- Dynamic Selected Invoices Table -->
-            <div id="selected-invoices-box" class="space-y-2 hidden">
-                <div class="flex items-center justify-between text-xs">
-                    <span class="font-bold text-foreground">Daftar Nota Penagihan Terpilih (<span id="count-selected-invoices">0</span> Nota)</span>
-                    <button type="button" id="btn-clear-invoices" class="text-[11px] text-destructive hover:underline cursor-pointer">
-                        Kosongkan Pilihan Nota
-                    </button>
-                </div>
-                <div class="border border-border rounded-lg overflow-hidden">
-                    <table class="uk-table uk-table-small uk-table-divider text-xs">
-                        <thead>
-                            <tr class="bg-muted/50 text-muted-foreground">
-                                <th class="py-2 px-3">No. Nota</th>
-                                <th class="py-2 px-3">Pelanggan</th>
-                                <th class="py-2 px-3">Master SMU</th>
-                                <th class="py-2 px-3 text-right">Berat Kargo</th>
-                                <th class="py-2 px-3 text-right">Total Nota</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tbody-selected-invoices" class="divide-y divide-border font-mono">
-                            <!-- Injected dynamically via JS -->
-                        </tbody>
-                        <tfoot class="bg-muted/30 font-semibold text-foreground">
-                            <tr>
-                                <td colspan="3" class="py-2 px-3">Total Akumulasi Dasar Nota:</td>
-                                <td class="py-2 px-3 text-right font-mono text-foreground" id="table-total-weight">0 kg</td>
-                                <td class="py-2 px-3 text-right font-mono text-primary font-bold" id="table-total-amount">Rp 0</td>
-                            </tr>
-                        </tfoot>
-                    </table>
+                    <div class="grid grid-cols-2 gap-3 p-3.5 rounded-lg border border-border bg-muted/30">
+                        <div>
+                            <span class="text-[10px] text-muted-foreground uppercase font-medium block">Koli SMU (Header):</span>
+                            <span id="badge-header-koli" class="text-lg font-bold font-mono text-foreground block">0 Koli</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-muted-foreground uppercase font-medium block">Berat SMU (Header):</span>
+                            <span id="badge-header-berat" class="text-lg font-bold font-mono text-foreground block">0.00 kg</span>
+                        </div>
+                    </div>
+                    <span class="text-[10px] text-muted-foreground block">
+                        Perhitungan biaya handling terminal &amp; cashback IAS menggunakan data fisik header Master SMU ini.
+                    </span>
                 </div>
             </div>
 
@@ -190,48 +160,44 @@
                             </svg>
                         </span>
                         <div>
-                            <span class="text-xs font-bold text-foreground block">Ringkasan Dasar Pembayaran IAS</span>
-                            <span class="text-[11px] text-muted-foreground">Informasi acuan nota &amp; SMU untuk menetapkan jumlah nominal pembayaran</span>
+                            <span class="text-xs font-bold text-foreground block">Ringkasan Master SMU Terpilih</span>
+                            <span class="text-[11px] text-muted-foreground">Informasi acuan SMU untuk menetapkan nominal pembayaran terminal IAS &amp; cashback</span>
                         </div>
                     </div>
                     <span id="basis-status-badge" class="uk-label uk-label-default text-[10px] uppercase font-mono self-start sm:self-auto">
-                        Belum Ada Dasar Dipilih
+                        Belum Ada SMU Dipilih
                     </span>
                 </div>
 
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                     <div>
+                        <span class="text-[11px] text-muted-foreground block">Nomor Master SMU:</span>
+                        <span id="preview-smu" class="font-mono font-bold text-foreground block truncate">-</span>
+                    </div>
+                    <div>
+                        <span class="text-[11px] text-muted-foreground block">Header Koli &amp; Berat:</span>
+                        <span id="preview-berat" class="font-mono font-semibold text-foreground block">-</span>
+                    </div>
+                    <div>
                         <span class="text-[11px] text-muted-foreground block">Pelanggan Terkait:</span>
                         <span id="preview-customer" class="font-semibold text-foreground truncate block">-</span>
                     </div>
                     <div>
-                        <span class="text-[11px] text-muted-foreground block">Dasar Nota Terkait:</span>
+                        <span class="text-[11px] text-muted-foreground block">Nota Penagihan:</span>
                         <span id="preview-nota" class="font-mono font-bold text-primary block truncate">-</span>
-                    </div>
-                    <div>
-                        <span class="text-[11px] text-muted-foreground block">Dasar Master SMU:</span>
-                        <span id="preview-smu" class="font-mono font-bold text-foreground block truncate">-</span>
-                    </div>
-                    <div>
-                        <span class="text-[11px] text-muted-foreground block">Total Berat Kargo:</span>
-                        <span id="preview-berat" class="font-mono font-semibold text-foreground block">-</span>
                     </div>
                 </div>
 
                 <!-- Quick Apply Amount Buttons -->
                 <div class="pt-2 border-t border-border/70 flex flex-wrap items-center gap-2">
                     <span class="text-[11px] font-semibold text-muted-foreground">Terapkan Cepat:</span>
-                    <button type="button" id="btn-use-nota-amount" 
-                            class="uk-btn uk-btn-default uk-btn-xs text-xs font-medium hidden">
-                        Gunakan Total Nota (<span id="val-nota-amount">Rp 0</span>)
-                    </button>
                     <button type="button" id="btn-use-handling-estimate" 
                             class="uk-btn uk-btn-default uk-btn-xs text-xs font-medium hidden">
-                        Estimasi Handling Terminal IAS (<span id="val-handling-estimate">Rp 0</span>)
+                        Estimasi Handling IAS (<span id="val-handling-estimate">Rp 0</span>)
                     </button>
                     <button type="button" id="btn-use-cashback-estimate" 
                             class="uk-btn uk-btn-default uk-btn-xs text-xs font-medium text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 hidden">
-                        Hitung Cashback (Rp 200/kg): <span id="val-cashback-estimate" class="font-bold ml-1">Rp 0</span>
+                        Hitung Cashback (Rp 200/kg Header): <span id="val-cashback-estimate" class="font-bold ml-1">Rp 0</span>
                     </button>
                 </div>
             </div>
@@ -325,19 +291,12 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const selectInvoices = document.getElementById('select_invoices');
-    const inputNomorNota = document.getElementById('input_nomor_nota');
+    const selectWorksheet = document.getElementById('select_worksheet');
     const inputNomorSmu = document.getElementById('input_nomor_smu');
-    const badgeSmusContainer = document.getElementById('badge-smus-container');
+    const badgeHeaderKoli = document.getElementById('badge-header-koli');
+    const badgeHeaderBerat = document.getElementById('badge-header-berat');
     const inputNominal = document.getElementById('input_nominal');
-    const inputCatatan = document.getElementById('input_catatan');
-
-    const selectedInvoicesBox = document.getElementById('selected-invoices-box');
-    const countSelectedInvoices = document.getElementById('count-selected-invoices');
-    const tbodySelectedInvoices = document.getElementById('tbody-selected-invoices');
-    const tableTotalWeight = document.getElementById('table-total-weight');
-    const tableTotalAmount = document.getElementById('table-total-amount');
-    const btnClearInvoices = document.getElementById('btn-clear-invoices');
+    const inputCashback = document.getElementById('input_cashback');
 
     const previewCustomer = document.getElementById('preview-customer');
     const previewNota = document.getElementById('preview-nota');
@@ -345,15 +304,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const previewBerat = document.getElementById('preview-berat');
     const basisStatusBadge = document.getElementById('basis-status-badge');
 
-    const btnUseNota = document.getElementById('btn-use-nota-amount');
     const btnUseHandling = document.getElementById('btn-use-handling-estimate');
     const btnUseCashback = document.getElementById('btn-use-cashback-estimate');
 
-    const valNotaAmount = document.getElementById('val-nota-amount');
     const valHandlingEstimate = document.getElementById('val-handling-estimate');
     const valCashbackEstimate = document.getElementById('val-cashback-estimate');
 
-    let currentNotaTotal = 0;
     let currentHandlingEstimate = 0;
     let currentCashbackEstimate = 0;
 
@@ -362,204 +318,103 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateBasisSummary() {
-        const selectedOptions = Array.from(selectInvoices.selectedOptions);
-        const hasInvoices = selectedOptions.length > 0;
+        const selectedOpt = selectWorksheet ? selectWorksheet.options[selectWorksheet.selectedIndex] : null;
+        const hasWorksheet = selectedOpt && selectedOpt.value;
 
-        let customersList = [];
-        let notasList = [];
-        let smusList = [];
-        let totalNotaAmount = 0;
-        let totalNotaWeight = 0;
+        if (hasWorksheet) {
+            const smuNo = selectedOpt.dataset.nomorSmu || '';
+            const koli = parseInt(selectedOpt.dataset.koli) || 0;
+            const berat = parseFloat(selectedOpt.dataset.berat) || 0;
+            const custs = selectedOpt.dataset.customers || '-';
+            const notas = selectedOpt.dataset.notas || '-';
 
-        tbodySelectedInvoices.innerHTML = '';
-        if (badgeSmusContainer) badgeSmusContainer.innerHTML = '';
+            inputNomorSmu.value = smuNo;
+            badgeHeaderKoli.textContent = koli.toLocaleString('id-ID') + ' Koli';
+            badgeHeaderBerat.textContent = berat.toFixed(2) + ' kg';
 
-        if (hasInvoices) {
-            selectedInvoicesBox.classList.remove('hidden');
-            countSelectedInvoices.textContent = selectedOptions.length;
+            previewSmu.textContent = smuNo;
+            previewBerat.textContent = `${koli} Koli / ${berat.toFixed(2)} kg`;
+            previewCustomer.textContent = custs;
+            previewNota.textContent = notas;
 
-            selectedOptions.forEach(opt => {
-                const notaNo = opt.dataset.nomorNota || opt.text.split('—')[0].trim();
-                const custName = opt.dataset.customer || '-';
-                const smuText = opt.dataset.smus || '-';
-                const w = parseFloat(opt.dataset.weight || 0);
-                const tot = parseFloat(opt.dataset.total || 0);
-
-                notasList.push(notaNo);
-                if (custName && custName !== '-' && !customersList.includes(custName)) {
-                    customersList.push(custName);
-                }
-                if (opt.dataset.smus) {
-                    opt.dataset.smus.split(',').forEach(s => {
-                        const trimmed = s.trim();
-                        if (trimmed && !smusList.includes(trimmed)) {
-                            smusList.push(trimmed);
-                        }
-                    });
-                }
-
-                totalNotaAmount += tot;
-                totalNotaWeight += w;
-
-                // Append to selected invoices table
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="py-2 px-3 font-bold text-primary">${notaNo}</td>
-                    <td class="py-2 px-3 font-sans text-muted-foreground">${custName}</td>
-                    <td class="py-2 px-3">${smuText}</td>
-                    <td class="py-2 px-3 text-right">${w.toLocaleString('id-ID')} kg</td>
-                    <td class="py-2 px-3 text-right font-bold">Rp ${tot.toLocaleString('id-ID')}</td>
-                `;
-                tbodySelectedInvoices.appendChild(tr);
-            });
-
-            tableTotalWeight.textContent = totalNotaWeight.toLocaleString('id-ID') + ' kg';
-            tableTotalAmount.textContent = formatRupiah(totalNotaAmount);
-
-            // Update auto-filled fields
-            inputNomorNota.value = notasList.join(', ');
-            inputNomorSmu.value = smusList.join(', ');
-
-            // Render SMU badge pills
-            if (badgeSmusContainer && smusList.length > 0) {
-                smusList.forEach(smu => {
-                    const badge = document.createElement('span');
-                    badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20';
-                    badge.textContent = smu;
-                    badgeSmusContainer.appendChild(badge);
-                });
-            }
-        } else {
-            selectedInvoicesBox.classList.add('hidden');
-            if (inputNomorNota.value && inputNomorNota.value.includes(',')) {
-                notasList = inputNomorNota.value.split(',').map(s => s.trim());
-            } else if (inputNomorNota.value) {
-                notasList = [inputNomorNota.value];
-            }
-            if (inputNomorSmu.value) {
-                smusList = inputNomorSmu.value.split(',').map(s => s.trim());
-            }
-        }
-
-        let totalBerat = totalNotaWeight;
-        currentNotaTotal = totalNotaAmount;
-        currentHandlingEstimate = 0;
-        currentCashbackEstimate = 0;
-
-        // Estimasi handling rate terminal (Rp 1.500 per kg standard modal handling IAS)
-        // Estimasi cashback kargo (Rp 200 per kg SMU klaim bulanan)
-        if (totalBerat > 0) {
-            currentHandlingEstimate = Math.round(totalBerat * 1500);
-            currentCashbackEstimate = Math.round(totalBerat * 200);
-        }
-
-        // Render preview card
-        previewCustomer.textContent = customersList.length > 0 ? customersList.join(', ') : '-';
-        previewNota.textContent = notasList.length > 0 ? (notasList.length > 2 ? `${notasList.length} Nota (${notasList.slice(0, 2).join(', ')}...)` : notasList.join(', ')) : (inputNomorNota.value || '-');
-        previewSmu.textContent = smusList.length > 0 ? (smusList.length > 2 ? `${smusList.length} SMU (${smusList.slice(0, 2).join(', ')}...)` : smusList.join(', ')) : (inputNomorSmu.value || '-');
-        previewBerat.textContent = totalBerat > 0 ? (totalBerat.toLocaleString('id-ID') + ' kg') : '-';
-
-        // Badge update
-        if (hasInvoices) {
-            basisStatusBadge.textContent = `${selectedOptions.length} Nota Dipilih (${smusList.length} SMU)`;
+            basisStatusBadge.textContent = 'SMU Terhubung';
             basisStatusBadge.className = 'uk-label uk-label-success text-[10px] uppercase font-mono self-start sm:self-auto';
-        } else if (inputNomorNota.value || inputNomorSmu.value) {
-            basisStatusBadge.textContent = 'Dasar Input Manual';
-            basisStatusBadge.className = 'uk-label uk-label-default text-[10px] uppercase font-mono self-start sm:self-auto';
-        } else {
-            basisStatusBadge.textContent = 'Belum Ada Nota Dipilih';
-            basisStatusBadge.className = 'uk-label uk-label-default text-[10px] uppercase font-mono self-start sm:self-auto';
-        }
 
-        // Quick buttons update
-        if (currentNotaTotal > 0) {
-            valNotaAmount.textContent = formatRupiah(currentNotaTotal);
-            btnUseNota.classList.remove('hidden');
-        } else {
-            btnUseNota.classList.add('hidden');
-        }
+            currentHandlingEstimate = Math.round(berat * 1500);
+            currentCashbackEstimate = Math.round(berat * 200);
 
-        if (currentHandlingEstimate > 0) {
-            valHandlingEstimate.textContent = formatRupiah(currentHandlingEstimate);
-            btnUseHandling.classList.remove('hidden');
+            if (currentHandlingEstimate > 0) {
+                valHandlingEstimate.textContent = formatRupiah(currentHandlingEstimate);
+                btnUseHandling.classList.remove('hidden');
+            } else {
+                btnUseHandling.classList.add('hidden');
+            }
+
+            if (currentCashbackEstimate > 0) {
+                valCashbackEstimate.textContent = formatRupiah(currentCashbackEstimate);
+                btnUseCashback.classList.remove('hidden');
+            } else {
+                btnUseCashback.classList.add('hidden');
+            }
         } else {
+            badgeHeaderKoli.textContent = '0 Koli';
+            badgeHeaderBerat.textContent = '0.00 kg';
+            previewSmu.textContent = inputNomorSmu.value || '-';
+            previewBerat.textContent = '-';
+            previewCustomer.textContent = '-';
+            previewNota.textContent = '-';
+
+            basisStatusBadge.textContent = 'Belum Ada SMU Dipilih';
+            basisStatusBadge.className = 'uk-label uk-label-default text-[10px] uppercase font-mono self-start sm:self-auto';
+
             btnUseHandling.classList.add('hidden');
-        }
-
-        if (currentCashbackEstimate > 0) {
-            valCashbackEstimate.textContent = formatRupiah(currentCashbackEstimate);
-            btnUseCashback.classList.remove('hidden');
-        } else {
             btnUseCashback.classList.add('hidden');
         }
     }
 
-    // Attach listeners
-    selectInvoices.addEventListener('change', function () {
-        updateBasisSummary();
-        // If nominal is empty and we have a suggested amount, populate handling estimate or nota total
-        if (!inputNominal.value || inputNominal.value == '0') {
-            if (currentHandlingEstimate > 0) {
+    if (selectWorksheet) {
+        selectWorksheet.addEventListener('change', function () {
+            updateBasisSummary();
+            if ((!inputNominal.value || inputNominal.value == '0') && currentHandlingEstimate > 0) {
                 inputNominal.value = currentHandlingEstimate;
-            } else if (currentNotaTotal > 0) {
-                inputNominal.value = currentNotaTotal;
             }
-        }
-        // Auto-populate or suggest cashback if 0
-        if ((!inputCashback.value || inputCashback.value == '0') && currentCashbackEstimate > 0) {
-            inputCashback.value = currentCashbackEstimate;
-        }
-        // Update default catatan if empty
-        if (!inputCatatan.value && inputNomorNota.value) {
-            const smuSuffix = inputNomorSmu.value ? ` (SMU: ${inputNomorSmu.value})` : '';
-            inputCatatan.value = `Pembayaran terminal handling IAS untuk Nota: ${inputNomorNota.value}${smuSuffix}`;
-        }
-    });
+            if ((!inputCashback.value || inputCashback.value == '0') && currentCashbackEstimate > 0) {
+                inputCashback.value = currentCashbackEstimate;
+            }
+            if (inputNomorSmu.value) {
+                const noteInput = document.querySelector('textarea[name="catatan"]');
+                if (noteInput && !noteInput.value) {
+                    noteInput.value = `Pembayaran terminal handling IAS untuk Master SMU: ${inputNomorSmu.value}`;
+                }
+            }
+        });
+    }
 
-    inputNomorNota.addEventListener('input', updateBasisSummary);
-    inputNomorSmu.addEventListener('input', updateBasisSummary);
+    if (inputNomorSmu) {
+        inputNomorSmu.addEventListener('input', updateBasisSummary);
+    }
 
-    // Quick set buttons click handlers
-    btnUseNota.addEventListener('click', function () {
-        if (currentNotaTotal > 0) {
-            inputNominal.value = currentNotaTotal;
-            inputNominal.focus();
-        }
-    });
-
-    btnUseHandling.addEventListener('click', function () {
+    btnUseHandling?.addEventListener('click', function () {
         if (currentHandlingEstimate > 0) {
             inputNominal.value = currentHandlingEstimate;
             inputNominal.focus();
         }
     });
 
-    btnUseCashback.addEventListener('click', function () {
+    btnUseCashback?.addEventListener('click', function () {
         if (currentCashbackEstimate > 0) {
             inputCashback.value = currentCashbackEstimate;
             inputCashback.focus();
         }
     });
 
-    btnClearInvoices.addEventListener('click', function () {
-        Array.from(selectInvoices.options).forEach(opt => opt.selected = false);
-        if (typeof $ !== 'undefined' && $(selectInvoices).hasClass('select2-hidden-accessible')) {
-            $(selectInvoices).trigger('change.select2');
-        }
-        inputNomorNota.value = '';
-        inputNomorSmu.value = '';
-        inputCashback.value = 0;
-        updateBasisSummary();
-    });
-
-    // jQuery Select2 bridge if initialized
     if (typeof $ !== 'undefined') {
-        $(selectInvoices).on('select2:select select2:unselect select2:clear', function () {
-            selectInvoices.dispatchEvent(new Event('change'));
+        $('.select2').select2({ width: '100%' });
+        $(selectWorksheet).on('select2:select select2:unselect select2:clear', function () {
+            selectWorksheet.dispatchEvent(new Event('change'));
         });
     }
 
-    // Initial trigger
     updateBasisSummary();
 });
 </script>

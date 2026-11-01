@@ -124,9 +124,9 @@ class PaymentController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
-            // Auto-alokasi FIFO ke nota-nota yang belum lunas
+            // Auto-alokasi FIFO ke nota-nota yang belum lunas (tidak termasuk dibatalkan)
             $unpaidInvoices = Invoice::where('customer_id', $customer->id)
-                ->where('status_pembayaran', '!=', 'lunas')
+                ->whereNotIn('status_pembayaran', ['lunas', 'dibatalkan'])
                 ->orderBy('tanggal', 'asc')
                 ->orderBy('id', 'asc')
                 ->get();

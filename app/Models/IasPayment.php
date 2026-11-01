@@ -12,6 +12,19 @@ class IasPayment extends Model
 
     protected $fillable = [
         'nomor_transaksi_ias',
+        'no_kuitansi',
+        'no_btb',
+        'airline',
+        'shipper',
+        'consignee',
+        'ori',
+        'dst',
+        'komoditi',
+        'koli',
+        'berat_kg',
+        'handling',
+        'adm_fee',
+        'pndp',
         'tanggal',
         'nomor_nota',
         'invoice_id',
@@ -32,6 +45,11 @@ class IasPayment extends Model
         'tanggal' => 'date',
         'nominal' => 'decimal:2',
         'cashback' => 'decimal:2',
+        'koli' => 'integer',
+        'berat_kg' => 'decimal:2',
+        'handling' => 'decimal:2',
+        'adm_fee' => 'decimal:2',
+        'pndp' => 'decimal:2',
     ];
 
     public function user()
