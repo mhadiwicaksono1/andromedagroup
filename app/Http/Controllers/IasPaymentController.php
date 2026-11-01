@@ -8,6 +8,11 @@ use App\Models\Worksheet;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 
 class IasPaymentController extends Controller
 {
@@ -471,7 +476,310 @@ class IasPaymentController extends Controller
         return (float)$clean;
     }
 
-    public function downloadTemplate()
+    public function downloadTemplate(Request $request)
+    {
+        $format = strtolower((string) $request->query('format', 'xlsx'));
+
+        if ($format === 'csv') {
+            return $this->downloadCsvTemplate();
+        }
+
+        if (class_exists(Spreadsheet::class)) {
+            return $this->downloadExcelTemplate();
+        }
+
+        return $this->downloadCsvTemplate();
+    }
+
+    protected function downloadExcelTemplate()
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Laporan Pembayaran IAS');
+
+        $headers = [
+            'No',
+            'Nomor Kuitansi',
+            'No. BTB/TTB',
+            'AWB',
+            'Airline',
+            'Tanggal',
+            'Customer',
+            'Sender',
+            'Receiver',
+            'Shipper',
+            'Consignee',
+            'ORI',
+            'DST',
+            'Komoditi',
+            'Goods',
+            'Qty',
+            'GW',
+            'CHW',
+            'Handling',
+            'Timbun',
+            'SGMA',
+            'Print SMU',
+            'Biaya Lainnya',
+            'Adm Fee',
+            'Subtotal',
+            'PPn',
+            'PNDP',
+            'Materai',
+            'Total',
+            'nomor_nota',
+        ];
+
+        $rows = [
+            [
+                1,
+                'BTHPID2610000092',
+                'BTHCID26090016857',
+                '126-05166770',
+                '(GA) Garuda Indonesia',
+                '2026-10-01',
+                'PT. JASAMITRA EKSPRES',
+                '',
+                '',
+                '-',
+                'JDE/INDRA',
+                'CGK',
+                'BTH',
+                'General',
+                'GENCO',
+                1,
+                14,
+                14,
+                21000,
+                0,
+                0,
+                0,
+                7000,
+                3000,
+                31000,
+                0,
+                840,
+                0,
+                31840,
+                '',
+            ],
+            [
+                '',
+                'Total Kuitansi BTHPID2610000092',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                1,
+                14,
+                14,
+                21000,
+                0,
+                0,
+                0,
+                7000,
+                3000,
+                31000,
+                0,
+                840,
+                0,
+                31840,
+                '',
+            ],
+            [
+                2,
+                'BTHPID2610000248',
+                'BTHCID26100000201',
+                '273-06943882',
+                '(RI) Rimbun Air',
+                '2026-10-01',
+                'PT. JASAMITRA EKSPRES',
+                '',
+                '',
+                'LOGITRANS / BRK',
+                'DIPO - BTH',
+                'CGK',
+                'BTH',
+                'Strongly Smelling Goods',
+                'DURIAN',
+                1,
+                28,
+                28,
+                42000,
+                0,
+                0,
+                0,
+                14000,
+                3000,
+                59000,
+                0,
+                1680,
+                0,
+                60680,
+                '',
+            ],
+            [
+                '',
+                'Total Kuitansi BTHPID2610000248',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                1,
+                28,
+                28,
+                42000,
+                0,
+                0,
+                0,
+                14000,
+                3000,
+                59000,
+                0,
+                1680,
+                0,
+                60680,
+                '',
+            ],
+            [
+                3,
+                'BTHPID2610000412',
+                'BTHCID26100000370',
+                '920-02197322',
+                '(IU) Super Air Jet',
+                '2026-10-01',
+                'PT. JASAMITRA EKSPRES',
+                '',
+                '',
+                '-',
+                'ANDROMEDA GROUP',
+                'YIA',
+                'BTH',
+                'Perishable',
+                'CABAI',
+                14,
+                382,
+                382,
+                573000,
+                0,
+                0,
+                0,
+                191000,
+                3000,
+                767000,
+                0,
+                22920,
+                0,
+                789920,
+                '',
+            ],
+            [
+                '',
+                'Total Kuitansi BTHPID2610000412',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                14,
+                382,
+                382,
+                573000,
+                0,
+                0,
+                0,
+                191000,
+                3000,
+                767000,
+                0,
+                22920,
+                0,
+                789920,
+                '',
+            ],
+        ];
+
+        $sheet->fromArray([$headers], null, 'A1');
+        $sheet->fromArray($rows, null, 'A2');
+
+        $highestCol = $sheet->getHighestColumn();
+        $highestRow = $sheet->getHighestRow();
+
+        // Header style
+        $headerStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 10],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '366092']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '244061']]],
+        ];
+        $sheet->getStyle("A1:{$highestCol}1")->applyFromArray($headerStyle);
+        $sheet->getRowDimension(1)->setRowHeight(26);
+
+        // Subtotal row style
+        $subtotalStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => '000000'], 'size' => 10],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'A9D08E']],
+        ];
+
+        for ($r = 2; $r <= $highestRow; $r++) {
+            $sheet->getRowDimension($r)->setRowHeight(20);
+            $val = (string) $sheet->getCell("B{$r}")->getValue();
+            if (str_starts_with(strtolower($val), 'total kuitansi')) {
+                $sheet->getStyle("A{$r}:{$highestCol}{$r}")->applyFromArray($subtotalStyle);
+            }
+        }
+
+        // Borders and vertical alignment for data
+        $sheet->getStyle("A2:{$highestCol}{$highestRow}")->applyFromArray([
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'D9D9D9']]],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+        ]);
+
+        // Number format
+        $sheet->getStyle("P2:R{$highestRow}")->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->getStyle("S2:AC{$highestRow}")->getNumberFormat()->setFormatCode('#,##0.00');
+
+        // Auto size columns
+        foreach (range('A', $highestCol) as $colId) {
+            $sheet->getColumnDimension($colId)->setAutoSize(true);
+        }
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+        }, 'template_import_pembayaran_ias.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'max-age=0',
+        ]);
+    }
+
+    protected function downloadCsvTemplate()
     {
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',

@@ -83,11 +83,25 @@ class IasPaymentTest extends TestCase
     {
         $user = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 
-        $response = $this->actingAs($user)->get(route('ias.payments.template'));
+        $response = $this->actingAs($user)->get(route('ias.payments.template', ['format' => 'csv']));
         $response->assertStatus(200);
         $content = $response->streamedContent();
         $this->assertStringContainsString('nomor_nota', $content);
         $this->assertStringContainsString('nomor_smu', $content);
+    }
+
+    public function test_excel_template_downloads_valid_xlsx()
+    {
+        $user = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $response = $this->actingAs($user)->get(route('ias.payments.template'));
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Disposition', 'attachment; filename=template_import_pembayaran_ias.xlsx');
+        $this->assertStringContainsString('spreadsheetml', $response->headers->get('Content-Type'));
+
+        $content = $response->streamedContent();
+        $this->assertGreaterThan(1000, strlen($content));
+        $this->assertStringStartsWith("PK\x03\x04", $content);
     }
 
     public function test_ias_payments_index_shows_dasar_nota_and_dasar_smu_columns()

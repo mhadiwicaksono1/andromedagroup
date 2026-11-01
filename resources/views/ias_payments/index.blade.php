@@ -11,11 +11,11 @@
             <p class="text-xs text-muted-foreground mt-0.5">Catatan pengeluaran &amp; impor transaksi pembayaran terminal handling &amp; pergudangan kargo ke IAS.</p>
         </div>
         <div class="flex items-center gap-2 flex-wrap self-start">
-            <a href="{{ route('ias.payments.template') }}" class="uk-btn uk-btn-default uk-btn-sm text-xs flex items-center gap-1.5 shadow-xs">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            <a href="{{ route('ias.payments.template', ['format' => 'xlsx']) }}" class="uk-btn uk-btn-default uk-btn-sm text-xs flex items-center gap-1.5 shadow-xs border-emerald-600/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20">
+                <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                 </svg>
-                <span>Unduh Template CSV</span>
+                <span>Unduh Template Excel (.xlsx)</span>
             </a>
 
             <button type="button" uk-toggle="target: #modal-import-ias" 
@@ -360,12 +360,16 @@
             <div class="p-3 bg-muted/40 rounded-lg text-xs space-y-1 text-muted-foreground">
                 <p class="font-bold text-foreground">Kolom yang Dikenali Otomatis:</p>
                 <p class="font-mono text-[10px] break-all">No, Nomor Kuitansi, No. BTB/TTB, AWB, Airline, Tanggal, Customer, Shipper, Consignee, ORI, DST, Komoditi, Goods, Qty, GW, CHW, Handling, Adm Fee, PNDP, Total</p>
-                <div class="pt-2">
-                    <a href="{{ route('ias.payments.template') }}" class="text-primary hover:underline font-semibold inline-flex items-center gap-1">
+                <div class="pt-2 flex flex-wrap items-center gap-3">
+                    <a href="{{ route('ias.payments.template', ['format' => 'xlsx']) }}" class="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold inline-flex items-center gap-1.5">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
-                        <span>Unduh Contoh Template Sesuai Format IAS (.csv)</span>
+                        <span>Unduh Contoh Template Excel (.xlsx)</span>
+                    </a>
+                    <span class="text-muted-foreground/40">|</span>
+                    <a href="{{ route('ias.payments.template', ['format' => 'csv']) }}" class="text-muted-foreground hover:text-foreground text-[11px] inline-flex items-center gap-1">
+                        <span>Format CSV (.csv)</span>
                     </a>
                 </div>
             </div>
