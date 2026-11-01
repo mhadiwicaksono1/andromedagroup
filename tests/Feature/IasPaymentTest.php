@@ -207,4 +207,44 @@ class IasPaymentTest extends TestCase
             $response->assertSee('target="_blank"', false);
         }
     }
+
+    public function test_store_ias_payment_with_unbilled_worksheet()
+    {
+        $user = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+
+        $worksheet = Worksheet::create([
+            'nomor_lembar_kerja' => 'LK/' . date('Ymd') . '/' . rand(1000, 9999),
+            'nomor_smu' => 'GA-BELUM-TERNOTA-' . rand(100, 999),
+            'tanggal' => now()->toDateString(),
+            'tipe' => 'pecahan',
+            'status' => 'draft',
+            'user_id' => $user->id,
+        ]);
+
+        $resCreate = $this->actingAs($user)->get(route('ias.payments.create'));
+        $resCreate->assertStatus(200);
+        $resCreate->assertSee('Belum Ternota');
+
+        $payload = [
+            'nomor_transaksi_ias' => 'TEST-UNBILLED-' . rand(1000, 9999),
+            'tanggal' => now()->toDateString(),
+            'worksheet_id' => $worksheet->id,
+            'nomor_smu' => $worksheet->nomor_smu,
+            'nominal' => 225000,
+            'cashback' => 30100,
+            'metode_bayar' => 'transfer',
+            'bank_pengirim' => 'BCA',
+            'status' => 'berhasil',
+            'catatan' => 'Pembayaran ke IAS untuk SMU belum ternota',
+        ];
+
+        $response = $this->actingAs($user)->post(route('ias.payments.store'), $payload);
+        $response->assertRedirect(route('ias.payments.index'));
+
+        $this->assertDatabaseHas('ias_payments', [
+            'nomor_transaksi_ias' => $payload['nomor_transaksi_ias'],
+            'worksheet_id' => $worksheet->id,
+            'nomor_smu' => $worksheet->nomor_smu,
+        ]);
+    }
 }

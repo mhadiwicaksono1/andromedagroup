@@ -109,7 +109,7 @@
                                     data-notas="{{ $wsNotas->implode(', ') }}"
                                     data-total-biaya="{{ (float) $ws->total_biaya }}"
                                     {{ $isSelected ? 'selected' : '' }}>
-                                {{ $ws->nomor_smu }} — {{ $ws->display_koli_smu }} Koli / {{ number_format($ws->display_berat_smu, 1) }} kg [{{ strtoupper($ws->tipe) }}] ({{ $wsCusts->take(2)->implode(', ') }}{{ count($wsCusts) > 2 ? '...' : '' }})
+                                {{ $ws->nomor_smu }} — {{ $ws->display_koli_smu }} Koli / {{ number_format($ws->display_berat_smu, 1) }} kg [{{ strtoupper($ws->tipe) }}] ({{ $wsCusts->take(2)->implode(', ') }}{{ count($wsCusts) > 2 ? '...' : '' }}) • {{ $wsNotas->isNotEmpty() ? 'Nota: ' . $wsNotas->implode(', ') : 'Belum Ternota' }}
                             </option>
                         @endforeach
                     </select>
@@ -335,7 +335,13 @@ document.addEventListener('DOMContentLoaded', function () {
             previewSmu.textContent = smuNo;
             previewBerat.textContent = `${koli} Koli / ${berat.toFixed(2)} kg`;
             previewCustomer.textContent = custs;
-            previewNota.textContent = notas;
+            if (notas) {
+                previewNota.textContent = notas;
+                previewNota.className = 'font-mono font-bold text-primary block truncate';
+            } else {
+                previewNota.textContent = 'Belum Ternota';
+                previewNota.className = 'font-mono text-muted-foreground italic block truncate';
+            }
 
             basisStatusBadge.textContent = 'SMU Terhubung';
             basisStatusBadge.className = 'uk-label uk-label-success text-[10px] uppercase font-mono self-start sm:self-auto';
